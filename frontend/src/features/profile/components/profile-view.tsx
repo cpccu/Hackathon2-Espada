@@ -53,9 +53,7 @@ export function ProfileView({ user, onEdit }: ProfileViewProps) {
     <div className="space-y-6">
       {/* Profile Header Card */}
       <Card className="relative overflow-hidden border-border bg-card shadow-xs">
-        <div className="h-28 bg-gradient-to-r from-blue-50/80 via-slate-50 to-muted/40 border-b border-border/80 relative">
-          <div className="absolute bottom-0 inset-x-0 h-0.5 bg-[#C62828]/60" />
-        </div>
+        <div className="h-28 bg-gradient-to-r from-blue-50/80 via-slate-50 to-muted/40 border-b border-border/80" />
         <CardContent className="px-6 pb-6 pt-0">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 -mt-12 sm:-mt-14 mb-4">
             <div className="flex items-end gap-4">
