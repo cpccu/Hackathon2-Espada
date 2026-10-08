@@ -4,6 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { EventDetail } from "../types";
+import {
+  getEventLifecycleStatus,
+  getEventLifecycleStatusStyles,
+} from "../utils/event-status";
 
 interface EventDetailHeaderProps {
   event: EventDetail;
@@ -24,6 +28,9 @@ export function EventDetailHeader({ event }: EventDetailHeaderProps) {
     hour: "2-digit",
     minute: "2-digit",
   });
+
+  const lifecycleStatus = getEventLifecycleStatus(event.startTime, event.endTime);
+  const statusBadgeStyle = getEventLifecycleStatusStyles(lifecycleStatus);
 
   return (
     <div className="space-y-6">
@@ -57,6 +64,7 @@ export function EventDetailHeader({ event }: EventDetailHeaderProps) {
           </div>
         )}
 
+        {/* Top-left: Category & Capacity Badges */}
         <div className="absolute top-4 left-4 flex flex-wrap gap-2">
           <Badge variant="secondary" className="text-xs font-semibold shadow-xs">
             {event.eventType}
@@ -71,6 +79,22 @@ export function EventDetailHeader({ event }: EventDetailHeaderProps) {
               Registration Open
             </Badge>
           )}
+        </div>
+
+        {/* Top-right: Lifecycle Status Pill */}
+        <div className="absolute top-4 right-4">
+          <span
+            suppressHydrationWarning
+            className={cn(
+              "inline-flex items-center gap-1.5 text-xs font-semibold tracking-wider uppercase px-2.5 py-1 rounded-md shadow-xs backdrop-blur-xs",
+              statusBadgeStyle,
+            )}
+          >
+            {lifecycleStatus === "ONGOING" && (
+              <span className="size-1.5 rounded-full bg-emerald-600 animate-pulse" />
+            )}
+            {lifecycleStatus}
+          </span>
         </div>
       </div>
 

@@ -52,12 +52,14 @@ export function ProfileView({ user, onEdit }: ProfileViewProps) {
   return (
     <div className="space-y-6">
       {/* Profile Header Card */}
-      <Card className="relative overflow-hidden border-border bg-card">
-        <div className="h-28 bg-gradient-to-r from-primary/15 via-primary/5 to-muted border-b border-border" />
+      <Card className="relative overflow-hidden border-border bg-card shadow-xs">
+        <div className="h-28 bg-gradient-to-r from-blue-50/80 via-slate-50 to-muted/40 border-b border-border/80 relative">
+          <div className="absolute bottom-0 inset-x-0 h-0.5 bg-[#C62828]/60" />
+        </div>
         <CardContent className="px-6 pb-6 pt-0">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 -mt-12 sm:-mt-14 mb-4">
             <div className="flex items-end gap-4">
-              <div className="flex size-24 items-center justify-center rounded-2xl border-4 border-card bg-primary text-primary-foreground font-bold text-2xl shadow-sm">
+              <div className="flex size-24 items-center justify-center rounded-2xl border-4 border-card bg-[#0B1F3A] text-white font-bold text-2xl shadow-sm tracking-wide">
                 {getInitials(user.name)}
               </div>
               <div className="mb-1">
@@ -73,7 +75,7 @@ export function ProfileView({ user, onEdit }: ProfileViewProps) {
 
             <Button
               onClick={onEdit}
-              className="gap-2 self-start sm:self-end cursor-pointer"
+              className="gap-2 self-start sm:self-end cursor-pointer font-semibold shadow-xs"
               aria-label="Edit Profile"
             >
               <Pencil className="size-4" />

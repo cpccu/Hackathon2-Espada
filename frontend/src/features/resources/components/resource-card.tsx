@@ -29,7 +29,7 @@ export function ResourceCard({ resource }: ResourceCardProps) {
   const badgeVariant = getResourceTypeBadgeVariant(resource.resourceType);
 
   return (
-    <Card className="flex flex-col h-full overflow-hidden hover:border-primary/50 transition-all duration-200 shadow-xs">
+    <Card className="flex flex-col h-full overflow-hidden hover:border-primary/40 hover:shadow-md transition-all duration-200 shadow-2xs group bg-card">
       <CardHeader className="space-y-2 pb-2">
         {/* Category & Course Tag Row */}
         <div className="flex flex-wrap items-center justify-between gap-1.5">
@@ -37,7 +37,7 @@ export function ResourceCard({ resource }: ResourceCardProps) {
             <Badge variant={badgeVariant} className="font-semibold text-[11px] shadow-2xs">
               {typeLabel}
             </Badge>
-            <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+            <span className="text-xs font-semibold text-primary bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md">
               {resource.course.code}
             </span>
           </div>
@@ -80,7 +80,7 @@ export function ResourceCard({ resource }: ResourceCardProps) {
         )}
 
         {/* File Meta Information Box */}
-        <div className="flex items-center justify-between p-2.5 rounded-lg bg-muted/40 border border-border/60 text-xs text-muted-foreground">
+        <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50/80 border border-border/80 text-xs text-muted-foreground">
           <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
             <FileText className="size-4 shrink-0 text-primary" />
             <span className="truncate font-mono text-[11px] text-foreground">
@@ -88,7 +88,7 @@ export function ResourceCard({ resource }: ResourceCardProps) {
             </span>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="font-semibold text-[10px] uppercase bg-background px-1.5 py-0.5 rounded border border-border">
+            <span className="font-semibold text-[10px] uppercase bg-white px-1.5 py-0.5 rounded border border-border text-foreground">
               {extension}
             </span>
             <span className="text-[11px]">{formattedSize}</span>

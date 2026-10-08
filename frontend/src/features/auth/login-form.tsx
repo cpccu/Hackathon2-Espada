@@ -56,15 +56,19 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-md mx-auto shadow-sm">
       <CardHeader className="space-y-1 text-center">
-        <div className="flex justify-center mb-1">
+        <div className="flex justify-center mb-2">
           <Image
             src="/city-university-logo.png"
             alt="City University Logo"
             width={60}
             height={45}
-            className="h-10 w-auto object-contain"
+            className="h-11 w-auto object-contain"
             priority
           />
+        </div>
+        <div className="inline-flex items-center justify-center gap-1.5 text-[11px] font-semibold text-[#0B1F3A] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100 mx-auto mb-1">
+          <span className="size-1.5 rounded-full bg-[#C62828]" />
+          <span>City University • CampusOS</span>
         </div>
         <CardTitle className="text-2xl font-bold">Sign In</CardTitle>
         <CardDescription>

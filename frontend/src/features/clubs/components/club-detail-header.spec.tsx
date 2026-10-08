@@ -38,4 +38,18 @@ describe("ClubDetailHeader", () => {
       screen.getByRole("link", { name: /Back to All Clubs/i }),
     ).toHaveAttribute("href", "/clubs");
   });
+
+  it("renders academic fallback when club images are missing or invalid", () => {
+    const clubWithoutImages: Club = {
+      ...mockClub,
+      logoUrl: "https://example.invalid/campusos/clubs/robotics/logo.png",
+      coverImageUrl: null,
+    };
+
+    render(<ClubDetailHeader club={clubWithoutImages} />);
+
+    expect(screen.getByRole("img", { name: "Robotics Society logo" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Robotics Society banner" })).toBeInTheDocument();
+    expect(screen.getByText("RS")).toBeInTheDocument();
+  });
 });

@@ -1,4 +1,6 @@
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
 import { Calendar, User as UserIcon } from "lucide-react";
 import {
   Card,
@@ -8,12 +10,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { ClubPost } from "../types";
+import { isValidImageUrl } from "../utils/club-image";
 
 interface ClubPostCardProps {
   post: ClubPost;
 }
 
 export function ClubPostCard({ post }: ClubPostCardProps) {
+  const [failedCoverSrc, setFailedCoverSrc] = useState<string | null>(null);
+
+  const showCover =
+    isValidImageUrl(post.coverImageUrl) && failedCoverSrc !== post.coverImageUrl;
   const displayDate = post.publishedAt || post.createdAt;
   const formattedDate = new Date(displayDate).toLocaleDateString("en-US", {
     month: "short",
@@ -23,14 +30,15 @@ export function ClubPostCard({ post }: ClubPostCardProps) {
 
   return (
     <Card className="overflow-hidden border border-border/70 shadow-2xs">
-      {post.coverImageUrl && (
+      {showCover && (
         <div className="relative h-44 w-full overflow-hidden bg-muted/40">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={post.coverImageUrl}
+            src={post.coverImageUrl!}
             alt={`${post.title} banner`}
             className="size-full object-cover"
             loading="lazy"
+            onError={() => setFailedCoverSrc(post.coverImageUrl)}
           />
         </div>
       )}

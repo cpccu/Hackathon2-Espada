@@ -6,3 +6,4 @@ export * from "./club-detail-header";
 export * from "./club-post-card";
 export * from "./club-posts-list";
 export * from "./club-detail-view";
+export * from "./club-image";

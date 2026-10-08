@@ -1,4 +1,5 @@
 export type EventRegistrationStatus = "REGISTERED" | "CANCELLED" | "ATTENDED";
+export type { EventLifecycleStatus } from "../utils/event-status";
 
 export interface EventClubInfo {
   id: string;

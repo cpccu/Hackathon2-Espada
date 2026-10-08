@@ -1,8 +1,9 @@
 import React from "react";
 import Link from "next/link";
-import { ArrowLeft, Calendar, FileText, Mail, Users } from "lucide-react";
+import { ArrowLeft, Calendar, FileText, Mail } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Club } from "../types";
+import { ClubCoverImage, ClubLogo } from "./club-image";
 
 interface ClubDetailHeaderProps {
   club: Club;
@@ -27,35 +28,27 @@ export function ClubDetailHeader({ club }: ClubDetailHeaderProps) {
 
       {/* Hero / Cover Banner */}
       <div className="relative rounded-2xl overflow-hidden border border-border bg-card shadow-xs">
-        {club.coverImageUrl ? (
-          <div className="relative h-48 sm:h-64 w-full overflow-hidden bg-muted">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={club.coverImageUrl}
-              alt={`${club.name} banner`}
-              className="size-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/30 to-transparent" />
-          </div>
-        ) : (
-          <div className="h-32 sm:h-40 w-full bg-linear-to-r from-primary/10 via-primary/5 to-muted/20 border-b border-border/50" />
-        )}
+        <ClubCoverImage
+          src={club.coverImageUrl}
+          name={club.name}
+          alt={`${club.name} banner`}
+          variant="header"
+          className="h-48 sm:h-64"
+        >
+          <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent pointer-events-none" />
+        </ClubCoverImage>
 
         {/* Club Meta Info */}
         <div className="p-6 sm:p-8 pt-0 relative">
           <div className="flex flex-col sm:flex-row sm:items-end gap-5 -mt-12 sm:-mt-16 mb-4">
             {/* Avatar / Logo */}
-            <div className="flex size-24 sm:size-28 shrink-0 items-center justify-center rounded-2xl border-4 border-card bg-card overflow-hidden shadow-md text-primary font-bold text-2xl">
-              {club.logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={club.logoUrl}
-                  alt={`${club.name} logo`}
-                  className="size-full object-cover"
-                />
-              ) : (
-                <Users className="size-12 text-primary" aria-hidden="true" />
-              )}
+            <div className="flex size-24 sm:size-28 shrink-0 items-center justify-center rounded-2xl border-4 border-card bg-card overflow-hidden shadow-md text-2xl font-bold">
+              <ClubLogo
+                src={club.logoUrl}
+                name={club.name}
+                alt={`${club.name} logo`}
+                className="size-full"
+              />
             </div>
 
             <div className="flex-1 min-w-0">

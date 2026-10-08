@@ -77,18 +77,23 @@ export function EventTicketView({
       </div>
 
       {/* Styled Event Ticket Pass */}
-      <Card className="overflow-hidden border-2 border-border shadow-md bg-card print:shadow-none print:border">
+      <Card className="overflow-hidden border border-border/80 shadow-md bg-card print:shadow-none print:border">
         {/* Ticket Header Banner */}
-        <div className="bg-primary px-6 py-4 text-primary-foreground flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="size-5" />
-            <span className="font-bold tracking-tight text-sm uppercase">
-              CampusOS Official Ticket Pass
-            </span>
+        <div className="bg-[#0B1F3A] px-6 py-4 text-white flex items-center justify-between border-b-2 border-[#C62828]">
+          <div className="flex items-center gap-2.5">
+            <ShieldCheck className="size-5 text-[#2563EB]" />
+            <div className="flex flex-col">
+              <span className="font-bold tracking-tight text-xs uppercase leading-tight">
+                City University • CampusOS Official Pass
+              </span>
+              <span className="text-[10px] text-slate-300 font-medium">
+                Verified Student Event Admission
+              </span>
+            </div>
           </div>
           <Badge
             variant="secondary"
-            className="text-[11px] font-semibold bg-white/20 text-white border-none"
+            className="text-[11px] font-semibold bg-white/15 text-white border-none"
           >
             {ticket.status}
           </Badge>
@@ -96,7 +101,7 @@ export function EventTicketView({
 
         <CardContent className="p-6 space-y-6">
           {/* Event Overview */}
-          <div className="space-y-2 border-b border-border pb-5">
+          <div className="space-y-2 border-b border-border/80 pb-5">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
               <Compass className="size-3.5 text-primary" />
               <span>{event.club.name}</span>
@@ -121,13 +126,13 @@ export function EventTicketView({
           </div>
 
           {/* QR Code Presentation */}
-          <div className="flex flex-col items-center justify-center p-4 bg-muted/30 rounded-2xl border border-border/80 space-y-3">
+          <div className="flex flex-col items-center justify-center p-6 bg-slate-50/80 rounded-2xl border border-border/80 space-y-4">
             {qrDataUrl ? (
-              <div className="bg-white p-3 rounded-xl shadow-xs border border-border">
+              <div className="bg-white p-3.5 rounded-xl shadow-xs border border-border/80">
                 <img
                   src={qrDataUrl}
                   alt={`QR Ticket for ${event.title}`}
-                  className="size-48 sm:size-56 object-contain"
+                  className="size-48 sm:size-52 object-contain"
                 />
               </div>
             ) : (
@@ -136,14 +141,14 @@ export function EventTicketView({
               </div>
             )}
 
-            <div className="text-center space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">
+            <div className="text-center space-y-1 max-w-xs">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
                 Registration Code
               </p>
-              <p className="text-base font-mono font-bold tracking-widest text-foreground">
+              <p className="text-lg font-mono font-bold tracking-widest text-foreground bg-white px-3 py-1 rounded-md border border-border/80 inline-block">
                 {ticket.registrationCode}
               </p>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[11px] text-muted-foreground pt-1">
                 Present this code or QR pass at the entrance scanner for check-in.
               </p>
             </div>

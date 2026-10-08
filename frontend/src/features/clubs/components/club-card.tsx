@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { Calendar, FileText, Mail, Users } from "lucide-react";
+import { Calendar, FileText, Mail } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { Club } from "../types";
+import { ClubCoverImage, ClubLogo } from "./club-image";
 
 interface ClubCardProps {
   club: Club;
@@ -21,34 +22,23 @@ export function ClubCard({ club }: ClubCardProps) {
 
   return (
     <Card className="flex flex-col h-full overflow-hidden transition-all duration-200 hover:shadow-md hover:border-primary/40 group">
-      {/* Optional Cover Banner */}
-      {club.coverImageUrl && (
-        <div className="relative h-32 w-full overflow-hidden bg-muted/30">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={club.coverImageUrl}
-            alt={`${club.name} cover`}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-            loading="lazy"
-          />
-        </div>
-      )}
+      {/* Cover Banner */}
+      <ClubCoverImage
+        src={club.coverImageUrl}
+        name={club.name}
+        alt={`${club.name} cover`}
+        variant="card"
+        className="h-32 w-full"
+      />
 
       <CardHeader className="flex flex-row items-start gap-3.5 p-5 pb-3">
         {/* Club Logo / Avatar Icon */}
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-border bg-muted/60 overflow-hidden text-primary font-bold text-base shadow-2xs">
-          {club.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={club.logoUrl}
-              alt={`${club.name} logo`}
-              className="size-full object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <Users className="size-6 text-primary/80" aria-hidden="true" />
-          )}
-        </div>
+        <ClubLogo
+          src={club.logoUrl}
+          name={club.name}
+          alt={`${club.name} logo`}
+          className="size-12 rounded-xl border border-border shadow-2xs text-base"
+        />
 
         <div className="flex-1 min-w-0">
           <CardTitle className="text-base font-semibold leading-snug truncate group-hover:text-primary transition-colors">

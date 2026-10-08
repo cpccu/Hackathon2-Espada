@@ -11,6 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { EventItem } from "../types";
+import {
+  getEventLifecycleStatus,
+  getEventLifecycleStatusStyles,
+} from "../utils/event-status";
 
 interface EventCardProps {
   event: EventItem;
@@ -27,32 +31,53 @@ export function EventCard({ event }: EventCardProps) {
     minute: "2-digit",
   });
 
+  const lifecycleStatus = getEventLifecycleStatus(event.startTime, event.endTime);
+  const statusBadgeStyle = getEventLifecycleStatusStyles(lifecycleStatus);
+
   return (
-    <Card className="flex flex-col h-full overflow-hidden hover:border-primary/50 transition-all duration-200 shadow-xs">
+    <Card className="flex flex-col h-full overflow-hidden hover:border-primary/40 hover:shadow-md transition-all duration-200 shadow-2xs group">
       {/* Event Cover or Header Banner */}
-      <div className="relative h-40 w-full bg-gradient-to-br from-primary/15 via-primary/5 to-muted overflow-hidden">
+      <div className="relative h-40 w-full bg-muted/40 border-b border-border/60 overflow-hidden">
         {event.coverImageUrl ? (
           <img
             src={event.coverImageUrl}
             alt={event.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center p-6 text-center">
-            <span className="text-3xl font-black text-primary/20 tracking-wider uppercase select-none">
+          <div className="flex h-full w-full items-center justify-center p-6 text-center bg-gradient-to-br from-blue-50/50 via-slate-50 to-muted/40">
+            <span className="text-2xl font-bold text-primary/30 tracking-wider uppercase select-none font-sans">
               {event.eventType}
             </span>
           </div>
         )}
+
+        {/* Top-left: Category & Capacity Badges */}
         <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-          <Badge variant="secondary" className="font-semibold shadow-xs">
+          <Badge variant="secondary" className="font-semibold shadow-2xs bg-white/95 backdrop-blur-xs text-foreground border border-border/60">
             {event.eventType}
           </Badge>
           {event.isFull && (
-            <Badge variant="destructive" className="font-semibold shadow-xs">
+            <Badge variant="destructive" className="font-semibold shadow-2xs bg-[#FEF2F2] text-[#C62828] border border-[#FCA5A5]">
               Full
             </Badge>
           )}
+        </div>
+
+        {/* Top-right: Lifecycle Status Pill */}
+        <div className="absolute top-3 right-3">
+          <span
+            suppressHydrationWarning
+            className={cn(
+              "inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-md shadow-2xs backdrop-blur-xs",
+              statusBadgeStyle,
+            )}
+          >
+            {lifecycleStatus === "ONGOING" && (
+              <span className="size-1.5 rounded-full bg-emerald-600 animate-pulse" />
+            )}
+            {lifecycleStatus}
+          </span>
         </div>
       </div>
 

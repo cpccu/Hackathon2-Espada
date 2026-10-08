@@ -70,4 +70,36 @@ describe("EventCard", () => {
 
     expect(screen.getByText("Full")).toBeInTheDocument();
   });
+
+  it("displays lifecycle status badge based on event timing", () => {
+    // 1. Future event -> UPCOMING
+    const futureEvent: EventItem = {
+      ...mockEvent,
+      startTime: "2099-01-01T10:00:00.000Z",
+      endTime: "2099-01-02T10:00:00.000Z",
+    };
+    const { unmount } = render(<EventCard event={futureEvent} />);
+    expect(screen.getByText("UPCOMING")).toBeInTheDocument();
+    unmount();
+
+    // 2. Past event -> ENDED
+    const pastEvent: EventItem = {
+      ...mockEvent,
+      startTime: "2020-01-01T10:00:00.000Z",
+      endTime: "2020-01-02T10:00:00.000Z",
+    };
+    const { unmount: unmountPast } = render(<EventCard event={pastEvent} />);
+    expect(screen.getByText("ENDED")).toBeInTheDocument();
+    unmountPast();
+
+    // 3. Ongoing event -> ONGOING
+    const now = Date.now();
+    const ongoingEvent: EventItem = {
+      ...mockEvent,
+      startTime: new Date(now - 3600000).toISOString(),
+      endTime: new Date(now + 3600000).toISOString(),
+    };
+    render(<EventCard event={ongoingEvent} />);
+    expect(screen.getByText("ONGOING")).toBeInTheDocument();
+  });
 });
