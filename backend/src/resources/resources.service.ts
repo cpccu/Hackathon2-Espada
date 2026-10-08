@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { PrismaService } from "../database/prisma.service.js";
 import { ResourceType, UserRole } from "../generated/prisma/client.js";
 import type { AuthenticatedUser } from "../auth/interfaces/authenticated-user.interface.js";
@@ -14,11 +18,16 @@ export class ResourcesService {
 
   /**
    * Helper to format a resource entity into a consistent API response
-   * providing both `resourceType` and `type`, plus uploader aliases.
+   * providing both `resourceType` and `type`, plus uploader aliases and batchDetails.
    */
   private formatResource<
     T extends {
       resourceType: ResourceType;
+      batchId?: string | null;
+      batch?:
+        | { id: string; batchNumber: number; departmentId?: string }
+        | string
+        | null;
       uploadedByUser?: {
         id: string;
         name: string;
@@ -27,7 +36,7 @@ export class ResourcesService {
       } | null;
     },
   >(resource: T) {
-    const { uploadedByUser, ...rest } = resource;
+    const { uploadedByUser, batch, ...rest } = resource;
     const uploader = uploadedByUser
       ? {
           id: uploadedByUser.id,
@@ -38,8 +47,23 @@ export class ResourcesService {
         }
       : undefined;
 
+    const batchDetails =
+      batch && typeof batch === "object" && "batchNumber" in batch
+        ? { id: batch.id, batchNumber: batch.batchNumber }
+        : null;
+
+    const batchString =
+      batchDetails !== null
+        ? String(batchDetails.batchNumber)
+        : typeof batch === "string"
+          ? batch
+          : null;
+
     return {
       ...rest,
+      batchId: resource.batchId ?? batchDetails?.id ?? null,
+      batch: batchString,
+      batchDetails,
       type: resource.resourceType,
       uploadedByUser: uploader,
       uploader,
@@ -65,10 +89,12 @@ export class ResourcesService {
       isPublished?: boolean;
       courseId?: string;
       resourceType?: ResourceType;
-      batch?: string;
+      batchId?: string;
+      batch?: { batchNumber: number };
       section?: string;
       course?: {
         semester?: number;
+        departmentId?: string;
       };
       OR?: Array<{
         title?: { contains: string; mode: "insensitive" };
@@ -96,17 +122,25 @@ export class ResourcesService {
       where.resourceType = typeFilter;
     }
 
-    if (query.batch) {
-      where.batch = query.batch;
+    if (query.batchId) {
+      where.batchId = query.batchId;
+    } else if (query.batch) {
+      const batchNum = parseInt(query.batch, 10);
+      if (!isNaN(batchNum)) {
+        where.batch = { batchNumber: batchNum };
+      }
     }
 
     if (query.section) {
       where.section = query.section;
     }
 
-    if (query.semester !== undefined) {
+    if (query.semester !== undefined || query.departmentId) {
       where.course = {
-        semester: Number(query.semester),
+        ...(query.semester !== undefined
+          ? { semester: Number(query.semester) }
+          : {}),
+        ...(query.departmentId ? { departmentId: query.departmentId } : {}),
       };
     }
 
@@ -123,6 +157,13 @@ export class ResourcesService {
       this.prisma.resource.findMany({
         where,
         include: {
+          batch: {
+            select: {
+              id: true,
+              batchNumber: true,
+              departmentId: true,
+            },
+          },
           course: {
             select: {
               id: true,
@@ -195,6 +236,13 @@ export class ResourcesService {
     const resource = await this.prisma.resource.findUnique({
       where: { id },
       include: {
+        batch: {
+          select: {
+            id: true,
+            batchNumber: true,
+            departmentId: true,
+          },
+        },
         course: {
           select: {
             id: true,
@@ -243,10 +291,44 @@ export class ResourcesService {
   async create(dto: CreateResourceDto, user: AuthenticatedUser) {
     const course = await this.prisma.course.findUnique({
       where: { id: dto.courseId },
+      include: { department: true },
     });
 
     if (!course) {
       throw new NotFoundException(`Course with ID "${dto.courseId}" not found`);
+    }
+
+    let resolvedBatchId: string | null = null;
+    if (dto.batchId) {
+      const batch = await this.prisma.batch.findUnique({
+        where: { id: dto.batchId },
+      });
+      if (!batch || !batch.isActive) {
+        throw new BadRequestException(
+          "Selected batch does not exist or is inactive",
+        );
+      }
+      if (batch.departmentId !== course.departmentId) {
+        throw new BadRequestException(
+          "Selected batch does not belong to the course's department",
+        );
+      }
+      resolvedBatchId = batch.id;
+    } else if (dto.batch) {
+      const batchNum = parseInt(dto.batch.trim(), 10);
+      if (!isNaN(batchNum)) {
+        const batch = await this.prisma.batch.findUnique({
+          where: {
+            departmentId_batchNumber: {
+              departmentId: course.departmentId,
+              batchNumber: batchNum,
+            },
+          },
+        });
+        if (batch && batch.isActive) {
+          resolvedBatchId = batch.id;
+        }
+      }
     }
 
     const resourceType = dto.resourceType || dto.type || ResourceType.NOTE;
@@ -262,12 +344,19 @@ export class ResourcesService {
         fileUrl: dto.fileUrl,
         fileSize: dto.fileSize,
         mimeType: dto.mimeType,
-        batch: dto.batch ?? null,
+        batchId: resolvedBatchId,
         section: dto.section ?? null,
         uploadedBy: user.id,
         isPublished,
       },
       include: {
+        batch: {
+          select: {
+            id: true,
+            batchNumber: true,
+            departmentId: true,
+          },
+        },
         course: {
           select: {
             id: true,
@@ -304,13 +393,16 @@ export class ResourcesService {
   async update(id: string, dto: UpdateResourceDto) {
     const existing = await this.prisma.resource.findUnique({
       where: { id },
+      include: { course: true },
     });
 
     if (!existing) {
       throw new NotFoundException(`Resource with ID "${id}" not found`);
     }
 
-    if (dto.courseId) {
+    let targetDepartmentId = existing.course.departmentId;
+
+    if (dto.courseId && dto.courseId !== existing.courseId) {
       const course = await this.prisma.course.findUnique({
         where: { id: dto.courseId },
       });
@@ -319,26 +411,90 @@ export class ResourcesService {
           `Course with ID "${dto.courseId}" not found`,
         );
       }
+      targetDepartmentId = course.departmentId;
     }
 
     const resourceType = dto.resourceType ?? dto.type;
 
+    const dataToUpdate: {
+      courseId?: string;
+      title?: string;
+      description?: string | null;
+      resourceType?: ResourceType;
+      fileName?: string;
+      fileUrl?: string;
+      fileSize?: number;
+      mimeType?: string;
+      batchId?: string | null;
+      section?: string | null;
+      isPublished?: boolean;
+    } = {};
+
+    if (dto.courseId) dataToUpdate.courseId = dto.courseId;
+    if (dto.title !== undefined) dataToUpdate.title = dto.title;
+    if (dto.description !== undefined)
+      dataToUpdate.description = dto.description;
+    if (resourceType !== undefined) dataToUpdate.resourceType = resourceType;
+    if (dto.fileName !== undefined) dataToUpdate.fileName = dto.fileName;
+    if (dto.fileUrl !== undefined) dataToUpdate.fileUrl = dto.fileUrl;
+    if (dto.fileSize !== undefined) dataToUpdate.fileSize = dto.fileSize;
+    if (dto.mimeType !== undefined) dataToUpdate.mimeType = dto.mimeType;
+    if (dto.section !== undefined) dataToUpdate.section = dto.section;
+    if (dto.isPublished !== undefined)
+      dataToUpdate.isPublished = dto.isPublished;
+
+    if (dto.batchId !== undefined) {
+      if (dto.batchId === null || dto.batchId === "") {
+        dataToUpdate.batchId = null;
+      } else {
+        const batch = await this.prisma.batch.findUnique({
+          where: { id: dto.batchId },
+        });
+        if (!batch || !batch.isActive) {
+          throw new BadRequestException(
+            "Selected batch does not exist or is inactive",
+          );
+        }
+        if (batch.departmentId !== targetDepartmentId) {
+          throw new BadRequestException(
+            "Selected batch does not belong to the course's department",
+          );
+        }
+        dataToUpdate.batchId = batch.id;
+      }
+    } else if (dto.batch !== undefined) {
+      const trimmed = dto.batch.trim();
+      if (!trimmed) {
+        dataToUpdate.batchId = null;
+      } else {
+        const batchNum = parseInt(trimmed, 10);
+        if (!isNaN(batchNum)) {
+          const batch = await this.prisma.batch.findUnique({
+            where: {
+              departmentId_batchNumber: {
+                departmentId: targetDepartmentId,
+                batchNumber: batchNum,
+              },
+            },
+          });
+          if (batch && batch.isActive) {
+            dataToUpdate.batchId = batch.id;
+          }
+        }
+      }
+    }
+
     const updated = await this.prisma.resource.update({
       where: { id },
-      data: {
-        ...(dto.courseId && { courseId: dto.courseId }),
-        ...(dto.title !== undefined && { title: dto.title }),
-        ...(dto.description !== undefined && { description: dto.description }),
-        ...(resourceType !== undefined && { resourceType }),
-        ...(dto.fileName !== undefined && { fileName: dto.fileName }),
-        ...(dto.fileUrl !== undefined && { fileUrl: dto.fileUrl }),
-        ...(dto.fileSize !== undefined && { fileSize: dto.fileSize }),
-        ...(dto.mimeType !== undefined && { mimeType: dto.mimeType }),
-        ...(dto.batch !== undefined && { batch: dto.batch }),
-        ...(dto.section !== undefined && { section: dto.section }),
-        ...(dto.isPublished !== undefined && { isPublished: dto.isPublished }),
-      },
+      data: dataToUpdate,
       include: {
+        batch: {
+          select: {
+            id: true,
+            batchNumber: true,
+            departmentId: true,
+          },
+        },
         course: {
           select: {
             id: true,
@@ -384,6 +540,13 @@ export class ResourcesService {
       where: { id },
       data: { isPublished: false },
       include: {
+        batch: {
+          select: {
+            id: true,
+            batchNumber: true,
+            departmentId: true,
+          },
+        },
         course: {
           select: {
             id: true,

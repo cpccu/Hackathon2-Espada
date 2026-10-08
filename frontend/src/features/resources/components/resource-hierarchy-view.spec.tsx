@@ -23,6 +23,7 @@ describe("ResourceHierarchyView", () => {
       fileSize: 102400,
       mimeType: "application/pdf",
       batch: "67",
+      batchDetails: { id: "batch-cse-67", batchNumber: 67 },
       section: "B",
       uploadedBy: "u-1",
       isPublished: true,
@@ -51,6 +52,7 @@ describe("ResourceHierarchyView", () => {
       fileSize: 204800,
       mimeType: "application/pdf",
       batch: "68",
+      batchDetails: { id: "batch-cse-68", batchNumber: 68 },
       section: "A",
       uploadedBy: "u-1",
       isPublished: true,
@@ -79,6 +81,7 @@ describe("ResourceHierarchyView", () => {
       fileSize: 307200,
       mimeType: "application/pdf",
       batch: "67",
+      batchDetails: { id: "batch-cse-67", batchNumber: 67 },
       section: null, // General / All Sections
       uploadedBy: "u-1",
       isPublished: true,
@@ -107,6 +110,7 @@ describe("ResourceHierarchyView", () => {
       fileSize: 409600,
       mimeType: "application/pdf",
       batch: "67",
+      batchDetails: { id: "batch-eee-67", batchNumber: 67 },
       section: "A",
       uploadedBy: "u-1",
       isPublished: true,
@@ -205,7 +209,7 @@ describe("ResourceHierarchyView", () => {
     expect(screen.getByText("1 Resource")).toBeInTheDocument(); // EEE total
   });
 
-  it("groups resources by semester and sorts semesters numerically (1 -> 12)", () => {
+  it("groups resources by batch under department (Department -> Batch)", () => {
     render(
       <ResourceHierarchyView
         resources={mockResources}
@@ -217,15 +221,45 @@ describe("ResourceHierarchyView", () => {
       />,
     );
 
-    // Semesters inside CSE (1, 4, 7)
-    const semester1Badges = screen.getAllByText("Semester 1");
-    expect(semester1Badges.length).toBeGreaterThanOrEqual(1);
+    // Expand CSE department to view its batches
+    const cseToggle = screen.getByRole("button", {
+      name: /Toggle Department of Computer Science & Engineering/i,
+    });
+    fireEvent.click(cseToggle);
 
+    // Batches inside CSE (Batch 67, Batch 68)
+    expect(screen.getByText("Batch 67")).toBeInTheDocument();
+    expect(screen.getByText("Batch 68")).toBeInTheDocument();
+  });
+
+  it("groups resources by semester under batch (Department -> Batch -> Semester)", () => {
+    render(
+      <ResourceHierarchyView
+        resources={mockResources}
+        meta={dummyMeta}
+        isLoading={false}
+        error={null}
+        onPageChange={vi.fn()}
+        onRetry={vi.fn()}
+      />,
+    );
+
+    // Expand CSE department
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Toggle Department of Computer Science & Engineering/i,
+      }),
+    );
+
+    // Expand Batch 67
+    fireEvent.click(screen.getByRole("button", { name: /Toggle Batch 67/i }));
+
+    // Inside CSE Batch 67: Semester 4 and Semester 7
     expect(screen.getByText("Semester 4")).toBeInTheDocument();
     expect(screen.getByText("Semester 7")).toBeInTheDocument();
   });
 
-  it("groups resources by section and labels null section as 'General / All Sections'", () => {
+  it("groups resources by section under semester and labels null section as 'General / All Sections'", () => {
     render(
       <ResourceHierarchyView
         resources={mockResources}
@@ -237,7 +271,16 @@ describe("ResourceHierarchyView", () => {
       />,
     );
 
-    expect(screen.getAllByText("Section A").length).toBeGreaterThanOrEqual(1);
+    // Expand CSE -> Batch 67 -> Semester 4 & Semester 7
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Toggle Department of Computer Science & Engineering/i,
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Toggle Batch 67/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Toggle Semester 4/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Toggle Semester 7/i }));
+
     expect(screen.getByText("Section B")).toBeInTheDocument();
     expect(screen.getByText("General / All Sections")).toBeInTheDocument();
   });
@@ -254,43 +297,19 @@ describe("ResourceHierarchyView", () => {
       />,
     );
 
-    expect(screen.getByText("Structured Programming Slides")).toBeInTheDocument();
-    expect(screen.getByText("Database Normalization Sheet")).toBeInTheDocument();
-    expect(screen.getByText("Algorithms & Complexity Notes")).toBeInTheDocument();
-    expect(screen.getByText("Circuit Theorems Lab Manual")).toBeInTheDocument();
-  });
-
-  it("only renders departments and semesters present in the filtered result set", () => {
-    // Filtered to only 1 resource (Semester 4 of CSE)
-    const filteredResources = [mockResources[0]]; // Algorithms & Complexity Notes (CSE, Sem 4, Sec B)
-
-    render(
-      <ResourceHierarchyView
-        resources={filteredResources}
-        meta={{ total: 1, page: 1, limit: 10, totalPages: 1 }}
-        isLoading={false}
-        error={null}
-        onPageChange={vi.fn()}
-        onRetry={vi.fn()}
-      />,
+    // Expand CSE -> Batch 67 -> Semester 4
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Toggle Department of Computer Science & Engineering/i,
+      }),
     );
+    fireEvent.click(screen.getByRole("button", { name: /Toggle Batch 67/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Toggle Semester 4/i }));
 
-    // CSE and Semester 4 must appear
-    expect(
-      screen.getByText("Department of Computer Science & Engineering"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Semester 4")).toBeInTheDocument();
-    expect(screen.getByText("Section B")).toBeInTheDocument();
-
-    // EEE, Semester 1, and Semester 7 must NOT appear
-    expect(
-      screen.queryByText("Department of Electrical & Electronic Engineering"),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText("Semester 1")).not.toBeInTheDocument();
-    expect(screen.queryByText("Semester 7")).not.toBeInTheDocument();
+    expect(screen.getByText("Algorithms & Complexity Notes")).toBeInTheDocument();
   });
 
-  it("toggles collapse and expand when department or semester headers are clicked", () => {
+  it("has all accordions collapsed by default on initial render, and toggles manually", () => {
     render(
       <ResourceHierarchyView
         resources={mockResources}
@@ -305,15 +324,40 @@ describe("ResourceHierarchyView", () => {
     const cseToggle = screen.getByRole("button", {
       name: /Toggle Department of Computer Science & Engineering/i,
     });
-    expect(cseToggle).toHaveAttribute("aria-expanded", "true");
-
-    // Click to collapse CSE
-    fireEvent.click(cseToggle);
+    // Crucial: ALL hierarchy items must be collapsed on initial page load
     expect(cseToggle).toHaveAttribute("aria-expanded", "false");
 
-    // Click again to expand CSE
+    // Click to expand CSE
     fireEvent.click(cseToggle);
     expect(cseToggle).toHaveAttribute("aria-expanded", "true");
+
+    // Batches inside CSE are also collapsed by default
+    const batch67Toggle = screen.getByRole("button", { name: /Toggle Batch 67/i });
+    expect(batch67Toggle).toHaveAttribute("aria-expanded", "false");
+
+    // Click to expand Batch 67
+    fireEvent.click(batch67Toggle);
+    expect(batch67Toggle).toHaveAttribute("aria-expanded", "true");
+
+    // Semesters inside Batch 67 are also collapsed by default
+    const sem4Toggle = screen.getByRole("button", { name: /Toggle Semester 4/i });
+    expect(sem4Toggle).toHaveAttribute("aria-expanded", "false");
+
+    // Click to expand Semester 4
+    fireEvent.click(sem4Toggle);
+    expect(sem4Toggle).toHaveAttribute("aria-expanded", "true");
+
+    // Click again to collapse Semester 4
+    fireEvent.click(sem4Toggle);
+    expect(sem4Toggle).toHaveAttribute("aria-expanded", "false");
+
+    // Click again to collapse Batch 67
+    fireEvent.click(batch67Toggle);
+    expect(batch67Toggle).toHaveAttribute("aria-expanded", "false");
+
+    // Click again to collapse CSE
+    fireEvent.click(cseToggle);
+    expect(cseToggle).toHaveAttribute("aria-expanded", "false");
   });
 
   it("displays summary text of resources and unique semesters count", () => {

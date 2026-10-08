@@ -14,6 +14,7 @@ import type { ResourceItem } from "../types";
 import {
   formatFileSize,
   getFileExtension,
+  getSafeResourceFileUrl,
   getResourceTypeBadgeVariant,
   getResourceTypeLabel,
 } from "../utils/resource-formatters";
@@ -23,6 +24,7 @@ interface ResourceCardProps {
 }
 
 export function ResourceCard({ resource }: ResourceCardProps) {
+  const safeFileUrl = getSafeResourceFileUrl(resource.fileUrl);
   const extension = getFileExtension(resource.fileName);
   const formattedSize = formatFileSize(resource.fileSize);
   const typeLabel = getResourceTypeLabel(resource.resourceType);
@@ -107,9 +109,9 @@ export function ResourceCard({ resource }: ResourceCardProps) {
           View Details
         </Link>
 
-        {resource.fileUrl ? (
+        {safeFileUrl ? (
           <a
-            href={resource.fileUrl}
+            href={safeFileUrl}
             target="_blank"
             rel="noopener noreferrer"
             className={cn(

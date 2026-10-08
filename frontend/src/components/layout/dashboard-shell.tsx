@@ -8,6 +8,7 @@ import {
   Calendar,
   Compass,
   FileText,
+  Layers,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -29,33 +30,50 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const navGroups: NavGroup[] = [
-  {
-    label: "OVERVIEW",
-    items: [
-      { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    ],
-  },
-  {
-    label: "CAMPUS",
-    items: [
-      { name: "Events", href: "/events", icon: Calendar },
-      { name: "Clubs", href: "/clubs", icon: Compass },
-      { name: "Resources", href: "/resources", icon: FileText },
-    ],
-  },
-  {
-    label: "ACCOUNT",
-    items: [
-      { name: "Profile", href: "/profile", icon: UserIcon },
-    ],
-  },
-];
-
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const isAdminOrResourceAdmin =
+    user?.role === "ADMIN" || user?.role === "RESOURCE_ADMIN";
+
+  const navGroups: NavGroup[] = [
+    {
+      label: "OVERVIEW",
+      items: [
+        { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      ],
+    },
+    {
+      label: "CAMPUS",
+      items: [
+        { name: "Events", href: "/events", icon: Calendar },
+        { name: "Clubs", href: "/clubs", icon: Compass },
+        { name: "Resources", href: "/resources", icon: FileText },
+      ],
+    },
+    ...(isAdminOrResourceAdmin
+      ? [
+          {
+            label: "ADMINISTRATION",
+            items: [
+              {
+                name: "Batch Management",
+                href: "/dashboard/batches",
+                icon: Layers,
+              },
+            ],
+          },
+        ]
+      : []),
+    {
+      label: "ACCOUNT",
+      items: [
+        { name: "Profile", href: "/profile", icon: UserIcon },
+      ],
+    },
+  ];
 
   const getInitials = (name?: string) => {
     if (!name) return "U";

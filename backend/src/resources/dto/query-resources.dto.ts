@@ -33,10 +33,26 @@ export class QueryResourcesDto {
   courseId?: string;
 
   @ApiPropertyOptional({
+    example: "ca000000-0000-4000-8000-000000000001",
+    description: "Filter by department UUID",
+  })
+  @IsOptional()
+  @IsUUID("4")
+  departmentId?: string;
+
+  @ApiPropertyOptional({
+    example: "5b695289-afb3-4008-b3ca-99ec3e86215c",
+    description: "Filter by managed batch UUID",
+  })
+  @IsOptional()
+  @IsUUID("4")
+  batchId?: string;
+
+  @ApiPropertyOptional({
     enum: ResourceType,
     example: ResourceType.NOTE,
     description:
-      "Filter by resource type: NOTE, QUESTION_PAPER, LAB_MANUAL, NOTICE, OTHER",
+      "Type of resource: NOTE, QUESTION_PAPER, LAB_MANUAL, NOTICE, OTHER",
   })
   @IsOptional()
   @IsEnum(ResourceType)

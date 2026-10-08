@@ -65,7 +65,7 @@ model User {
   passwordHash String   @map("password_hash")
   /// Institution-issued student identifier. Nullable for staff accounts.
   studentId    String?  @unique @map("student_id")
-  batch        String?
+  batchId      String?  @map("batch_id") @db.Uuid
   section      String?
   departmentId String?  @map("department_id") @db.Uuid
   role         UserRole
@@ -75,6 +75,7 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   department           Department?           @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  batch                Batch?                @relation(fields: [batchId], references: [id], onDelete: Restrict)
   clubAdminAssignments ClubAdminAssignment[] @relation("ClubAdminAssignmentUserName")
   assignmentsGranted   ClubAdminAssignment[] @relation("ClubAdminAssignmentAssignerName")
   eventsCreated        Event[]               @relation("EventCreator")
@@ -86,6 +87,7 @@ model User {
   refreshSessions      RefreshTokenSession[]
 
   @@index([departmentId])
+  @@index([batchId])
   @@index([role])
   @@map("users")
 }
@@ -105,8 +107,30 @@ model Department {
 
   users   User[]
   courses Course[]
+  batches Batch[]
 
   @@map("departments")
+}
+
+// ---------------------------------------------------------------------------
+// Batch — managed academic cohort per department
+// ---------------------------------------------------------------------------
+
+model Batch {
+  id           String     @id @default(uuid()) @db.Uuid
+  departmentId String     @map("department_id") @db.Uuid
+  batchNumber  Int        @map("batch_number")
+  isActive     Boolean    @default(true) @map("is_active")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  users        User[]
+  resources    Resource[]
+
+  @@unique([departmentId, batchNumber])
+  @@index([departmentId])
+  @@map("batches")
 }
 
 // ---------------------------------------------------------------------------
@@ -313,7 +337,7 @@ model Resource {
   fileUrl      String       @map("file_url")
   fileSize     Int          @map("file_size")
   mimeType     String       @map("mime_type")
-  batch        String?
+  batchId      String?      @map("batch_id") @db.Uuid
   section      String?
   uploadedBy   String       @map("uploaded_by") @db.Uuid
   isPublished  Boolean      @default(false) @map("is_published")
@@ -321,11 +345,13 @@ model Resource {
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
   course         Course @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  batch          Batch? @relation(fields: [batchId], references: [id], onDelete: Restrict)
   uploadedByUser User   @relation(fields: [uploadedBy], references: [id], onDelete: Restrict)
 
   @@index([courseId])
   @@index([resourceType])
-  @@index([batch, section])
+  @@index([batchId])
+  @@index([batchId, section])
   @@index([uploadedBy])
   @@map("resources")
 }

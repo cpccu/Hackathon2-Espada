@@ -100,4 +100,22 @@ describe("ResourceDetailView", () => {
     const backLink = screen.getByRole("link", { name: /Back to Resources/i });
     expect(backLink).toHaveAttribute("href", "/resources");
   });
+
+  it("resolves placeholder or example.invalid fileUrl to sample academic document", () => {
+    const placeholderDetail: ResourceDetail = {
+      ...mockDetail,
+      fileUrl: "https://example.invalid/campusos/resources/sql-joins-lab-02.pdf",
+    };
+
+    render(<ResourceDetailView resource={placeholderDetail} />);
+
+    const downloadLink = screen.getByRole("link", {
+      name: /Download \/ Open Resource/i,
+    });
+    expect(downloadLink).toHaveAttribute(
+      "href",
+      "/documents/sample-academic-resource.pdf",
+    );
+    expect(downloadLink).toHaveAttribute("target", "_blank");
+  });
 });

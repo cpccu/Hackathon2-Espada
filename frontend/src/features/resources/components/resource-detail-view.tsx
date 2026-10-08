@@ -22,6 +22,7 @@ import type { ResourceDetail } from "../types";
 import {
   formatFileSize,
   getFileExtension,
+  getSafeResourceFileUrl,
   getResourceTypeBadgeVariant,
   getResourceTypeLabel,
 } from "../utils/resource-formatters";
@@ -31,6 +32,7 @@ interface ResourceDetailViewProps {
 }
 
 export function ResourceDetailView({ resource }: ResourceDetailViewProps) {
+  const safeFileUrl = getSafeResourceFileUrl(resource.fileUrl);
   const extension = getFileExtension(resource.fileName);
   const formattedSize = formatFileSize(resource.fileSize);
   const typeLabel = getResourceTypeLabel(resource.resourceType);
@@ -172,9 +174,9 @@ export function ResourceDetailView({ resource }: ResourceDetailViewProps) {
               </div>
 
               {/* Action Button */}
-              {resource.fileUrl ? (
+              {safeFileUrl ? (
                 <a
-                  href={resource.fileUrl}
+                  href={safeFileUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={cn(

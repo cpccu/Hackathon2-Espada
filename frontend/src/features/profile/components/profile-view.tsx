@@ -173,7 +173,13 @@ export function ProfileView({ user, onEdit }: ProfileViewProps) {
             <div className="flex justify-between items-center py-2 border-b border-border/50 text-sm">
               <span className="text-muted-foreground">Batch</span>
               <span className="font-medium text-foreground">
-                {user.batch || (
+                {user.batchDetails ? (
+                  `Batch ${user.batchDetails.batchNumber}`
+                ) : user.batch ? (
+                  user.batch.toLowerCase().startsWith("batch")
+                    ? user.batch
+                    : `Batch ${user.batch}`
+                ) : (
                   <span className="text-muted-foreground font-normal italic">
                     Not provided
                   </span>

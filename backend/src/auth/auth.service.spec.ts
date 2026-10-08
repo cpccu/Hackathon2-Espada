@@ -23,6 +23,10 @@ describe("AuthService", () => {
     department: {
       findUnique: ReturnType<typeof vi.fn>;
     };
+    batch: {
+      findUnique: ReturnType<typeof vi.fn>;
+      findMany: ReturnType<typeof vi.fn>;
+    };
     refreshTokenSession: {
       findUnique: ReturnType<typeof vi.fn>;
       create: ReturnType<typeof vi.fn>;
@@ -48,6 +52,10 @@ describe("AuthService", () => {
       },
       department: {
         findUnique: vi.fn(),
+      },
+      batch: {
+        findUnique: vi.fn(),
+        findMany: vi.fn(),
       },
       refreshTokenSession: {
         findUnique: vi.fn(),
@@ -110,6 +118,12 @@ describe("AuthService", () => {
         id: registerDto.departmentId,
         isActive: true,
       });
+      prismaMock.batch.findUnique.mockResolvedValueOnce({
+        id: "batch-uuid-1",
+        batchNumber: 67,
+        departmentId: registerDto.departmentId,
+        isActive: true,
+      });
 
       passwordServiceMock.hash.mockResolvedValueOnce("hashed_password_123");
       const createdUser = {
@@ -118,7 +132,11 @@ describe("AuthService", () => {
         email: registerDto.email,
         passwordHash: "hashed_password_123",
         studentId: registerDto.studentId,
-        batch: registerDto.batch,
+        batchId: "batch-uuid-1",
+        batch: {
+          id: "batch-uuid-1",
+          batchNumber: 67,
+        },
         section: registerDto.section,
         departmentId: registerDto.departmentId,
         role: UserRole.STUDENT,
@@ -444,7 +462,12 @@ describe("AuthService", () => {
       email: "student1@campusos.dev",
       passwordHash: "super-secret-hash",
       studentId: "CSE-2023-142",
-      batch: "67",
+      batchId: "batch-uuid-1",
+      batch: {
+        id: "batch-uuid-1",
+        batchNumber: 67,
+        departmentId: "dept-uuid-1",
+      },
       section: "A",
       role: UserRole.STUDENT,
       avatarUrl: null,
@@ -467,12 +490,22 @@ describe("AuthService", () => {
         code: "EEE",
         isActive: true,
       });
+      prismaMock.batch.findUnique.mockResolvedValueOnce({
+        id: "batch-uuid-2",
+        batchNumber: 68,
+        departmentId: "dept-uuid-2",
+        isActive: true,
+      });
 
       const updatedUser = {
         ...existingUser,
         name: "Rafid Updated",
         studentId: "CSE-2023-999",
-        batch: "68",
+        batchId: "batch-uuid-2",
+        batch: {
+          id: "batch-uuid-2",
+          batchNumber: 68,
+        },
         section: "B",
         departmentId: "dept-uuid-2",
         department: {

@@ -48,4 +48,27 @@ describe("EventFilters", () => {
       eventType: "Hackathon",
     });
   });
+
+  it("renders exactly one clear button when search has text, which clears input and filter", () => {
+    const handleFilterChange = vi.fn();
+    render(
+      <EventFilters
+        initialSearch="hackathon"
+        selectedCategory="Workshop"
+        onFilterChange={handleFilterChange}
+      />,
+    );
+
+    const clearButtons = screen.getAllByRole("button", { name: /Clear search/i });
+    expect(clearButtons).toHaveLength(1);
+
+    fireEvent.click(clearButtons[0]);
+
+    const input = screen.getByPlaceholderText(/search events by title/i);
+    expect(input).toHaveValue("");
+    expect(handleFilterChange).toHaveBeenCalledWith({
+      search: undefined,
+      eventType: "Workshop",
+    });
+  });
 });

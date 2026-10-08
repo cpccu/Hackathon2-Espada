@@ -24,6 +24,15 @@ import { cn } from "@/lib/utils";
 export function DashboardOverview() {
   const { user } = useAuth();
 
+  const departmentDisplay = user?.department
+    ? user.department.code &&
+      user.department.name.toLowerCase().includes(`(${user.department.code.toLowerCase()})`)
+      ? user.department.name
+      : user.department.code
+        ? `${user.department.name} (${user.department.code})`
+        : user.department.name
+    : null;
+
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
       {/* Welcome Banner */}
@@ -46,8 +55,8 @@ export function DashboardOverview() {
           <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
             You are logged in as a{" "}
             <span className="font-semibold text-foreground">{user?.role}</span>
-            {user?.department && (
-              <span> in <strong className="font-semibold text-foreground">{user.department.name} ({user.department.code})</strong></span>
+            {departmentDisplay && (
+              <span> in <strong className="font-semibold text-foreground">{departmentDisplay}</strong></span>
             )}
             . Access university notices, course resources, club activities, and campus workshops in one place.
           </p>

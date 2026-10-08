@@ -26,7 +26,18 @@ export class UpdateProfileDto {
   )
   studentId?: string;
 
-  @ApiPropertyOptional({ example: "67", description: "Batch number/name" })
+  @ApiPropertyOptional({
+    example: "5b695289-afb3-4008-b3ca-99ec3e86215c",
+    description: "UUID of the managed Batch",
+  })
+  @IsOptional()
+  @IsUUID(4, { message: "batchId must be a valid UUIDv4" })
+  batchId?: string;
+
+  @ApiPropertyOptional({
+    example: "67",
+    description: "Legacy batch string (fallback)",
+  })
   @IsOptional()
   @IsString()
   @Transform(({ value }: { value: unknown }) =>

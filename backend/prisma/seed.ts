@@ -216,7 +216,41 @@ async function seedDepartments() {
   return { cse, eee };
 }
 
-async function seedUsers(departmentIds: { cse: string; eee: string }): Promise<{
+async function seedBatches(): Promise<Record<string, { id: string }>> {
+  const departments = await prisma.department.findMany({
+    select: { id: true, code: true },
+  });
+  const batchNumbers = [66, 67, 68, 69, 70];
+  const batchMap: Record<string, { id: string }> = {};
+
+  for (const dept of departments) {
+    for (const batchNum of batchNumbers) {
+      const batch = await prisma.batch.upsert({
+        where: {
+          departmentId_batchNumber: {
+            departmentId: dept.id,
+            batchNumber: batchNum,
+          },
+        },
+        update: { isActive: true },
+        create: {
+          departmentId: dept.id,
+          batchNumber: batchNum,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+      batchMap[`${dept.code.toLowerCase()}_${batchNum}`] = batch;
+    }
+  }
+
+  return batchMap;
+}
+
+async function seedUsers(params: {
+  departmentIds: { cse: string; eee: string };
+  batches: Record<string, { id: string }>;
+}): Promise<{
   admin: { id: string };
   clubAdmin: { id: string };
   resourceAdmin: { id: string };
@@ -232,7 +266,7 @@ async function seedUsers(departmentIds: { cse: string; eee: string }): Promise<{
       email: "admin@campusos.dev",
       role: UserRole.ADMIN,
       studentId: null,
-      batch: null,
+      batchId: null,
       section: null,
       departmentId: null,
     },
@@ -242,9 +276,9 @@ async function seedUsers(departmentIds: { cse: string; eee: string }): Promise<{
       email: "club.admin@campusos.dev",
       role: UserRole.CLUB_ADMIN,
       studentId: "CSE-2021-014",
-      batch: "67",
+      batchId: params.batches.cse_67?.id ?? null,
       section: "A",
-      departmentId: departmentIds.cse,
+      departmentId: params.departmentIds.cse,
     },
     {
       key: "resourceAdmin",
@@ -252,9 +286,9 @@ async function seedUsers(departmentIds: { cse: string; eee: string }): Promise<{
       email: "resource.admin@campusos.dev",
       role: UserRole.RESOURCE_ADMIN,
       studentId: null,
-      batch: null,
+      batchId: null,
       section: null,
-      departmentId: departmentIds.cse,
+      departmentId: params.departmentIds.cse,
     },
     {
       key: "studentOne",
@@ -262,9 +296,9 @@ async function seedUsers(departmentIds: { cse: string; eee: string }): Promise<{
       email: "student1@campusos.dev",
       role: UserRole.STUDENT,
       studentId: "CSE-2023-142",
-      batch: "67",
+      batchId: params.batches.cse_67?.id ?? null,
       section: "A",
-      departmentId: departmentIds.cse,
+      departmentId: params.departmentIds.cse,
     },
     {
       key: "studentTwo",
@@ -272,9 +306,9 @@ async function seedUsers(departmentIds: { cse: string; eee: string }): Promise<{
       email: "student2@campusos.dev",
       role: UserRole.STUDENT,
       studentId: "EEE-2023-057",
-      batch: "67",
+      batchId: params.batches.eee_67?.id ?? null,
       section: "A",
-      departmentId: departmentIds.eee,
+      departmentId: params.departmentIds.eee,
     },
   ];
 
@@ -541,6 +575,7 @@ async function seedEvents(params: {
 async function seedResources(params: {
   resourceAdminId: string;
   adminId: string;
+  batches: Record<string, { id: string }>;
 }) {
   const resources = [
     {
@@ -553,7 +588,7 @@ async function seedResources(params: {
       fileName: "cse-2115-linked-lists.pdf",
       fileSize: 1_486_848,
       mimeType: "application/pdf",
-      batch: "67",
+      batchId: params.batches.cse_67?.id ?? null,
       section: "A",
       uploadedBy: params.resourceAdminId,
       isPublished: true,
@@ -567,7 +602,7 @@ async function seedResources(params: {
       fileName: "cse-2115-midterm-fall-2025.pdf",
       fileSize: 722_944,
       mimeType: "application/pdf",
-      batch: "67",
+      batchId: params.batches.cse_67?.id ?? null,
       section: "A",
       uploadedBy: params.resourceAdminId,
       isPublished: true,
@@ -581,7 +616,7 @@ async function seedResources(params: {
       fileName: "cse-3101-lab-02-sql-joins.pdf",
       fileSize: 981_760,
       mimeType: "application/pdf",
-      batch: "67",
+      batchId: params.batches.cse_67?.id ?? null,
       section: "A",
       uploadedBy: params.resourceAdminId,
       isPublished: true,
@@ -595,7 +630,7 @@ async function seedResources(params: {
       fileName: "cse-3101-normalization-cheatsheet.pdf",
       fileSize: 356_352,
       mimeType: "application/pdf",
-      batch: "67",
+      batchId: params.batches.cse_67?.id ?? null,
       section: null,
       uploadedBy: params.resourceAdminId,
       isPublished: true,
@@ -609,7 +644,7 @@ async function seedResources(params: {
       fileName: "cse-3201-final-spring-2025.pdf",
       fileSize: 1_048_576,
       mimeType: "application/pdf",
-      batch: "66",
+      batchId: params.batches.cse_66?.id ?? null,
       section: "B",
       uploadedBy: params.adminId,
       isPublished: true,
@@ -623,7 +658,7 @@ async function seedResources(params: {
       fileName: "cse-1101-number-systems.pdf",
       fileSize: 634_880,
       mimeType: "application/pdf",
-      batch: "68",
+      batchId: params.batches.cse_68?.id ?? null,
       section: "A",
       uploadedBy: params.resourceAdminId,
       isPublished: true,
@@ -637,7 +672,7 @@ async function seedResources(params: {
       fileName: "cse-2115-makeup-class-notice.pdf",
       fileSize: 145_408,
       mimeType: "application/pdf",
-      batch: "67",
+      batchId: params.batches.cse_67?.id ?? null,
       section: "A",
       uploadedBy: params.resourceAdminId,
       isPublished: true,
@@ -651,7 +686,7 @@ async function seedResources(params: {
       fileName: "eee-1101-kirchhoff-worked-examples.pdf",
       fileSize: 845_824,
       mimeType: "application/pdf",
-      batch: "67",
+      batchId: params.batches.eee_67?.id ?? null,
       section: "A",
       uploadedBy: params.resourceAdminId,
       isPublished: true,
@@ -665,7 +700,7 @@ async function seedResources(params: {
       fileName: "eee-2201-lab-01-logic-gates.pdf",
       fileSize: 1_152_102,
       mimeType: "application/pdf",
-      batch: "67",
+      batchId: params.batches.eee_67?.id ?? null,
       section: "B",
       uploadedBy: params.resourceAdminId,
       isPublished: true,
@@ -681,7 +716,7 @@ async function seedResources(params: {
       fileSize: 58_368,
       mimeType:
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      batch: "67",
+      batchId: params.batches.eee_67?.id ?? null,
       section: "B",
       uploadedBy: params.resourceAdminId,
       isPublished: false,
@@ -691,7 +726,7 @@ async function seedResources(params: {
   for (const { id, ...data } of resources) {
     const resource = {
       ...data,
-      fileUrl: fileUrl(`resources/${data.fileName}`),
+      fileUrl: "/documents/sample-academic-resource.pdf",
     };
 
     await prisma.resource.upsert({
@@ -913,9 +948,13 @@ async function main(): Promise<void> {
   console.log("Seeding CampusOS development data...");
 
   const departments = await seedDepartments();
+  const batches = await seedBatches();
   const users = await seedUsers({
-    cse: departments.cse.id,
-    eee: departments.eee.id,
+    departmentIds: {
+      cse: departments.cse.id,
+      eee: departments.eee.id,
+    },
+    batches,
   });
   const clubs = await seedClubs();
 
@@ -935,6 +974,7 @@ async function main(): Promise<void> {
   await seedResources({
     resourceAdminId: users.resourceAdmin.id,
     adminId: users.admin.id,
+    batches,
   });
 
   await seedRegistrations({
@@ -966,6 +1006,7 @@ async function main(): Promise<void> {
   const [
     userCount,
     departmentCount,
+    batchCount,
     courseCount,
     clubCount,
     clubAdminCount,
@@ -978,6 +1019,7 @@ async function main(): Promise<void> {
   ] = await Promise.all([
     prisma.user.count(),
     prisma.department.count(),
+    prisma.batch.count(),
     prisma.course.count(),
     prisma.club.count(),
     prisma.clubAdminAssignment.count(),
@@ -993,6 +1035,7 @@ async function main(): Promise<void> {
     [
       `users: ${userCount}`,
       `departments: ${departmentCount}`,
+      `batches: ${batchCount}`,
       `courses: ${courseCount}`,
       `clubs: ${clubCount}`,
       `club admin assignments: ${clubAdminCount}`,

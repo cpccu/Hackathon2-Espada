@@ -25,6 +25,7 @@ export const registerSchema = z
       .string()
       .min(1, "Please confirm your password"),
     studentId: z.string().trim().optional(),
+    batchId: z.string().trim().optional(),
     batch: z.string().trim().optional(),
     section: z.string().trim().optional(),
     departmentId: z

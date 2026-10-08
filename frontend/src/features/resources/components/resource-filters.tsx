@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Filter, RotateCcw, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useResourceCourses } from "../hooks/use-resource-courses";
 import type { ResourceType } from "../types";
+import { getBatches } from "@/features/batches/api/batches-api";
+import type { Batch } from "@/types";
 
 interface ResourceFiltersProps {
   initialSearch?: string;
@@ -63,6 +65,44 @@ export function ResourceFilters({
   }
 
   const { courses, isLoading: isCoursesLoading } = useResourceCourses();
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [isLoadingBatches, setIsLoadingBatches] = useState(false);
+
+  const selectedCourse = courses.find((c) => c.id === selectedCourseId);
+  const selectedDepartmentId = selectedCourse?.department?.id;
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadBatches() {
+      try {
+        setIsLoadingBatches(true);
+        const data = await getBatches({
+          departmentId: selectedDepartmentId,
+          isActive: true,
+        });
+        if (isMounted) {
+          setBatches(data);
+        }
+      } catch {
+        if (isMounted) {
+          setBatches([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingBatches(false);
+        }
+      }
+    }
+    void loadBatches();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedDepartmentId]);
+
+  const availableBatchNumbers = useMemo(() => {
+    const nums = Array.from(new Set(batches.map((b) => b.batchNumber)));
+    return nums.sort((a, b) => a - b);
+  }, [batches]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,6 +137,18 @@ export function ResourceFilters({
     });
   };
 
+  const handleBatchChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setBatchValue(value);
+    onFilterChange({
+      search: searchValue.trim() || undefined,
+      courseId: selectedCourseId,
+      resourceType: selectedType,
+      batch: value || undefined,
+      section: sectionValue.trim() || undefined,
+    });
+  };
+
   const handleTypeSelect = (typeVal: ResourceType | "ALL") => {
     const newType = typeVal === "ALL" ? undefined : typeVal;
     onFilterChange({
@@ -108,7 +160,7 @@ export function ResourceFilters({
     });
   };
 
-  const handleBatchSectionSubmit = (e: React.FormEvent) => {
+  const handleSectionSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onFilterChange({
       search: searchValue.trim() || undefined,
@@ -206,25 +258,26 @@ export function ResourceFilters({
           </select>
         </div>
 
-        {/* Batch Filter Input */}
+        {/* Batch Select Dropdown */}
         <div className="space-y-1.5">
-          <label htmlFor="batch-input" className="text-xs font-medium text-muted-foreground">
+          <label htmlFor="batch-select" className="text-xs font-medium text-muted-foreground">
             Academic Batch
           </label>
-          <form onSubmit={handleBatchSectionSubmit} className="flex gap-1.5">
-            <Input
-              id="batch-input"
-              type="text"
-              placeholder="e.g. 67, 68"
-              value={batchValue}
-              onChange={(e) => setBatchValue(e.target.value)}
-              className="h-9 text-xs"
-              aria-label="Filter by batch"
-            />
-            <Button type="submit" variant="secondary" size="sm" className="h-9 px-2.5 text-xs">
-              Apply
-            </Button>
-          </form>
+          <select
+            id="batch-select"
+            value={batchValue || ""}
+            onChange={handleBatchChange}
+            disabled={isLoadingBatches}
+            className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-2xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground cursor-pointer"
+            aria-label="Filter by batch"
+          >
+            <option value="">All Batches</option>
+            {availableBatchNumbers.map((num) => (
+              <option key={num} value={String(num)}>
+                Batch {num}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Section Filter Input */}
@@ -232,7 +285,7 @@ export function ResourceFilters({
           <label htmlFor="section-input" className="text-xs font-medium text-muted-foreground">
             Section / Group
           </label>
-          <form onSubmit={handleBatchSectionSubmit} className="flex gap-1.5">
+          <form onSubmit={handleSectionSubmit} className="flex gap-1.5">
             <Input
               id="section-input"
               type="text"

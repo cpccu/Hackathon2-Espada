@@ -13,12 +13,24 @@ export interface Department {
   code: string;
 }
 
+export interface Batch {
+  id: string;
+  departmentId: string;
+  batchNumber: number;
+  isActive: boolean;
+  department?: Department | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
   studentId: string | null;
+  batchId?: string | null;
   batch: string | null;
+  batchDetails?: { id: string; batchNumber: number } | null;
   section: string | null;
   role: UserRole;
   avatarUrl: string | null;

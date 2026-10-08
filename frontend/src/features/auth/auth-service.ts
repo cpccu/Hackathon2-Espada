@@ -12,6 +12,7 @@ export interface RegisterData {
   email: string;
   password: string;
   studentId?: string;
+  batchId?: string;
   batch?: string;
   section?: string;
   departmentId: string;
@@ -20,6 +21,7 @@ export interface RegisterData {
 export interface UpdateProfileData {
   name?: string;
   studentId?: string;
+  batchId?: string;
   batch?: string;
   section?: string;
   departmentId?: string;

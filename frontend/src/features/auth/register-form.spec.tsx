@@ -168,4 +168,101 @@ describe("RegisterForm", () => {
     );
     expect(confirmPasswordInput).toHaveAttribute("type", "password");
   });
+
+  it("fetches and displays department batches when department is selected", async () => {
+    vi.spyOn(departmentsApi, "getDepartments").mockResolvedValue(mockDepartments);
+    const mockBatches = [
+      {
+        id: "batch-cse-67",
+        departmentId: "ca000000-0000-4000-8000-000000000001",
+        batchNumber: 67,
+        isActive: true,
+      },
+      {
+        id: "batch-cse-68",
+        departmentId: "ca000000-0000-4000-8000-000000000001",
+        batchNumber: 68,
+        isActive: true,
+      },
+    ];
+
+    const batchesApi = await import("@/features/batches/api/batches-api");
+    const getBatchesSpy = vi
+      .spyOn(batchesApi, "getBatches")
+      .mockResolvedValue(mockBatches);
+
+    render(<RegisterForm />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Department of Computer Science & Engineering (CSE)"),
+      ).toBeInTheDocument();
+    });
+
+    const deptSelect = screen.getByLabelText(/^Department \*/i);
+    fireEvent.change(deptSelect, {
+      target: { value: "ca000000-0000-4000-8000-000000000001" },
+    });
+
+    await waitFor(() => {
+      expect(getBatchesSpy).toHaveBeenCalledWith({
+        departmentId: "ca000000-0000-4000-8000-000000000001",
+        isActive: true,
+      });
+      expect(screen.getByText("Batch 67")).toBeInTheDocument();
+      expect(screen.getByText("Batch 68")).toBeInTheDocument();
+    });
+
+    // Verify raw batch UUID is not displayed as text
+    const formText = document.body.textContent || "";
+    expect(formText).not.toContain("batch-cse-67");
+    expect(formText).not.toContain("batch-cse-68");
+  });
+
+  it("resets batch selection when department changes", async () => {
+    vi.spyOn(departmentsApi, "getDepartments").mockResolvedValue(mockDepartments);
+    const batchesApi = await import("@/features/batches/api/batches-api");
+    vi.spyOn(batchesApi, "getBatches").mockResolvedValue([
+      {
+        id: "batch-cse-67",
+        departmentId: "ca000000-0000-4000-8000-000000000001",
+        batchNumber: 67,
+        isActive: true,
+      },
+    ]);
+
+    render(<RegisterForm />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Department of Computer Science & Engineering (CSE)"),
+      ).toBeInTheDocument();
+    });
+
+    const deptSelect = screen.getByLabelText(/^Department \*/i);
+    const batchSelect = screen.getByLabelText(/^Batch/i);
+
+    // Select CSE
+    fireEvent.change(deptSelect, {
+      target: { value: "ca000000-0000-4000-8000-000000000001" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Batch 67")).toBeInTheDocument();
+    });
+
+    fireEvent.change(batchSelect, {
+      target: { value: "batch-cse-67" },
+    });
+    expect((batchSelect as HTMLSelectElement).value).toBe("batch-cse-67");
+
+    // Change to EEE -> batch must reset
+    fireEvent.change(deptSelect, {
+      target: { value: "ca000000-0000-4000-8000-000000000002" },
+    });
+
+    await waitFor(() => {
+      expect((batchSelect as HTMLSelectElement).value).toBe("");
+    });
+  });
 });

@@ -12,6 +12,14 @@ export class DepartmentResponseDto {
   code!: string;
 }
 
+export class BatchResponseDto {
+  @ApiProperty({ example: "5b695289-afb3-4008-b3ca-99ec3e86215c" })
+  id!: string;
+
+  @ApiProperty({ example: 67 })
+  batchNumber!: number;
+}
+
 export class SafeUserDto {
   @ApiProperty({ example: "ea000000-0000-4000-8000-000000000001" })
   id!: string;
@@ -25,8 +33,17 @@ export class SafeUserDto {
   @ApiPropertyOptional({ example: "CSE-2023-142", nullable: true })
   studentId!: string | null;
 
+  @ApiPropertyOptional({
+    example: "5b695289-afb3-4008-b3ca-99ec3e86215c",
+    nullable: true,
+  })
+  batchId?: string | null;
+
   @ApiPropertyOptional({ example: "67", nullable: true })
   batch!: string | null;
+
+  @ApiPropertyOptional({ type: BatchResponseDto, nullable: true })
+  batchDetails?: BatchResponseDto | null;
 
   @ApiPropertyOptional({ example: "A", nullable: true })
   section!: string | null;

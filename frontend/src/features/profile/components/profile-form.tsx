@@ -30,6 +30,8 @@ import { cn } from "@/lib/utils";
 import { profileSchema, type ProfileFormValues } from "../schemas/profile-schema";
 import { profileApi } from "../api/profile-api";
 import type { Department, User } from "../types";
+import type { Batch } from "@/types";
+import { getBatches } from "@/features/batches/api/batches-api";
 
 interface ProfileFormProps {
   user: User;
@@ -41,22 +43,32 @@ export function ProfileForm({ user, onSuccess, onCancel }: ProfileFormProps) {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [isLoadingDepts, setIsLoadingDepts] = useState<boolean>(true);
   const [deptLoadError, setDeptLoadError] = useState<string | null>(null);
+
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [isLoadingBatches, setIsLoadingBatches] = useState<boolean>(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
       name: user.name ?? "",
       studentId: user.studentId ?? "",
+      batchId: user.batchId ?? (user.batchDetails ? user.batchDetails.id : ""),
       batch: user.batch ?? "",
       section: user.section ?? "",
       departmentId: user.department?.id ?? "",
     },
   });
+
+  const selectedDepartmentId = watch("departmentId");
+  const selectedBatchId = watch("batchId");
+  const prevDeptIdRef = React.useRef(user.department?.id ?? "");
 
   useEffect(() => {
     let isMounted = true;
@@ -85,13 +97,61 @@ export function ProfileForm({ user, onSuccess, onCancel }: ProfileFormProps) {
     };
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    if (prevDeptIdRef.current !== (selectedDepartmentId ?? "")) {
+      prevDeptIdRef.current = selectedDepartmentId ?? "";
+      setValue("batchId", "");
+    }
+
+    if (!selectedDepartmentId) {
+      setBatches([]);
+      return;
+    }
+
+    async function loadBatches() {
+      try {
+        setIsLoadingBatches(true);
+        const data = await getBatches({
+          departmentId: selectedDepartmentId,
+          isActive: true,
+        });
+        if (isMounted) {
+          setBatches(data);
+          const initialBatch = user.batchId ?? (user.batchDetails ? user.batchDetails.id : "");
+          if (
+            selectedDepartmentId === user.department?.id &&
+            initialBatch &&
+            data.some((b) => b.id === initialBatch)
+          ) {
+            setValue("batchId", initialBatch);
+          }
+        }
+      } catch {
+        if (isMounted) {
+          setBatches([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingBatches(false);
+        }
+      }
+    }
+
+    void loadBatches();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedDepartmentId, setValue, user.batchId, user.batchDetails, user.department?.id]);
+
   const onSubmit = async (values: ProfileFormValues) => {
     setApiError(null);
     try {
       const updatedUser = await profileApi.updateProfile({
         name: values.name.trim(),
         studentId: values.studentId?.trim() || undefined,
-        batch: values.batch?.trim() || undefined,
+        batchId: values.batchId || undefined,
         section: values.section?.trim() || undefined,
         departmentId: values.departmentId?.trim() || undefined,
       });
@@ -242,13 +302,57 @@ export function ProfileForm({ user, onSuccess, onCancel }: ProfileFormProps) {
               )}
             </div>
 
-            <Input
-              label="Batch"
-              placeholder="e.g. 67"
-              error={errors.batch?.message}
-              disabled={isSubmitting}
-              {...register("batch")}
-            />
+            {/* Batch Selection Dropdown */}
+            <div className="w-full space-y-1.5 text-left">
+              <label
+                htmlFor="batchId"
+                className="block text-xs font-medium text-foreground tracking-tight"
+              >
+                Batch
+              </label>
+              <div className="relative">
+                <select
+                  id="batchId"
+                  aria-label="Batch"
+                  disabled={!selectedDepartmentId || isLoadingBatches || isSubmitting}
+                  className={cn(
+                    "flex h-9 w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground shadow-xs transition-colors appearance-none cursor-pointer pr-9",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-ring",
+                    "disabled:cursor-not-allowed disabled:opacity-50",
+                    errors.batchId && "border-destructive focus-visible:ring-destructive",
+                  )}
+                  value={selectedBatchId || ""}
+                  {...register("batchId")}
+                >
+                  <option value="">
+                    {!selectedDepartmentId
+                      ? "Select department first"
+                      : isLoadingBatches
+                        ? "Loading batches..."
+                        : batches.length === 0
+                          ? "No batches found"
+                          : "Select your batch"}
+                  </option>
+                  {batches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      Batch {b.batchNumber}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">
+                  {isLoadingBatches ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <ChevronDown className="size-4" />
+                  )}
+                </div>
+              </div>
+              {errors.batchId && (
+                <p role="alert" className="text-xs font-medium text-destructive mt-1">
+                  {errors.batchId.message}
+                </p>
+              )}
+            </div>
 
             <Input
               label="Section"

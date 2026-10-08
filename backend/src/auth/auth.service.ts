@@ -92,6 +92,40 @@ export class AuthService {
       );
     }
 
+    // 3.5. If batchId is provided, verify it exists, is active, and belongs to selected department
+    let resolvedBatchId: string | null = null;
+    if (dto.batchId) {
+      const batch = await this.prisma.batch.findUnique({
+        where: { id: dto.batchId },
+      });
+      if (!batch || !batch.isActive) {
+        throw new BadRequestException(
+          "Selected batch does not exist or is inactive",
+        );
+      }
+      if (batch.departmentId !== dto.departmentId) {
+        throw new BadRequestException(
+          "Selected batch does not belong to the selected department",
+        );
+      }
+      resolvedBatchId = batch.id;
+    } else if (dto.batch) {
+      const batchNum = parseInt(dto.batch.trim(), 10);
+      if (!isNaN(batchNum)) {
+        const batch = await this.prisma.batch.findUnique({
+          where: {
+            departmentId_batchNumber: {
+              departmentId: dto.departmentId,
+              batchNumber: batchNum,
+            },
+          },
+        });
+        if (batch && batch.isActive) {
+          resolvedBatchId = batch.id;
+        }
+      }
+    }
+
     // 4. Hash password
     const passwordHash = await this.passwordService.hash(dto.password);
 
@@ -102,7 +136,7 @@ export class AuthService {
         email,
         passwordHash,
         studentId: dto.studentId ?? null,
-        batch: dto.batch ?? null,
+        batchId: resolvedBatchId,
         section: dto.section ?? null,
         departmentId: dto.departmentId,
         role: UserRole.STUDENT,
@@ -114,6 +148,12 @@ export class AuthService {
             id: true,
             name: true,
             code: true,
+          },
+        },
+        batch: {
+          select: {
+            id: true,
+            batchNumber: true,
           },
         },
       },
@@ -142,6 +182,12 @@ export class AuthService {
             id: true,
             name: true,
             code: true,
+          },
+        },
+        batch: {
+          select: {
+            id: true,
+            batchNumber: true,
           },
         },
       },
@@ -233,6 +279,12 @@ export class AuthService {
             code: true,
           },
         },
+        batch: {
+          select: {
+            id: true,
+            batchNumber: true,
+          },
+        },
       },
     });
 
@@ -279,6 +331,12 @@ export class AuthService {
             code: true,
           },
         },
+        batch: {
+          select: {
+            id: true,
+            batchNumber: true,
+          },
+        },
       },
     });
 
@@ -310,6 +368,13 @@ export class AuthService {
             code: true,
           },
         },
+        batch: {
+          select: {
+            id: true,
+            batchNumber: true,
+            departmentId: true,
+          },
+        },
       },
     });
 
@@ -320,6 +385,8 @@ export class AuthService {
     if (!user.isActive) {
       throw new UnauthorizedException("Account is deactivated");
     }
+
+    const targetDepartmentId = dto.departmentId ?? user.departmentId;
 
     // 1. If departmentId is provided, verify it exists and is active
     if (dto.departmentId !== undefined) {
@@ -354,7 +421,7 @@ export class AuthService {
     const dataToUpdate: {
       name?: string;
       studentId?: string | null;
-      batch?: string | null;
+      batchId?: string | null;
       section?: string | null;
       departmentId?: string;
     } = {};
@@ -365,14 +432,60 @@ export class AuthService {
     if (dto.studentId !== undefined) {
       dataToUpdate.studentId = dto.studentId.trim() || null;
     }
-    if (dto.batch !== undefined) {
-      dataToUpdate.batch = dto.batch.trim() || null;
-    }
     if (dto.section !== undefined) {
       dataToUpdate.section = dto.section.trim() || null;
     }
     if (dto.departmentId !== undefined) {
       dataToUpdate.departmentId = dto.departmentId;
+    }
+
+    // 4. Batch validation and update
+    if (dto.batchId !== undefined) {
+      if (dto.batchId === null || dto.batchId === "") {
+        dataToUpdate.batchId = null;
+      } else {
+        const batch = await this.prisma.batch.findUnique({
+          where: { id: dto.batchId },
+        });
+        if (!batch || !batch.isActive) {
+          throw new BadRequestException(
+            "Selected batch does not exist or is inactive",
+          );
+        }
+        if (targetDepartmentId && batch.departmentId !== targetDepartmentId) {
+          throw new BadRequestException(
+            "Selected batch does not belong to the selected department",
+          );
+        }
+        dataToUpdate.batchId = batch.id;
+      }
+    } else if (dto.batch !== undefined) {
+      const trimmed = dto.batch.trim();
+      if (!trimmed) {
+        dataToUpdate.batchId = null;
+      } else if (targetDepartmentId) {
+        const batchNum = parseInt(trimmed, 10);
+        if (!isNaN(batchNum)) {
+          const batch = await this.prisma.batch.findUnique({
+            where: {
+              departmentId_batchNumber: {
+                departmentId: targetDepartmentId,
+                batchNumber: batchNum,
+              },
+            },
+          });
+          if (batch && batch.isActive) {
+            dataToUpdate.batchId = batch.id;
+          }
+        }
+      }
+    } else if (
+      dto.departmentId !== undefined &&
+      dto.departmentId !== user.departmentId
+    ) {
+      if (user.batch && user.batch.departmentId !== dto.departmentId) {
+        dataToUpdate.batchId = null;
+      }
     }
 
     const updatedUser = await this.prisma.user.update({
@@ -384,6 +497,12 @@ export class AuthService {
             id: true,
             name: true,
             code: true,
+          },
+        },
+        batch: {
+          select: {
+            id: true,
+            batchNumber: true,
           },
         },
       },
@@ -473,7 +592,8 @@ export class AuthService {
     name: string;
     email: string;
     studentId: string | null;
-    batch: string | null;
+    batchId?: string | null;
+    batch?: { id: string; batchNumber: number } | string | null;
     section: string | null;
     role: UserRole;
     avatarUrl: string | null;
@@ -482,12 +602,28 @@ export class AuthService {
     updatedAt: Date;
     department?: { id: string; name: string; code: string } | null;
   }): SafeUserDto {
+    const batchDetails =
+      user.batch &&
+      typeof user.batch === "object" &&
+      "batchNumber" in user.batch
+        ? { id: user.batch.id, batchNumber: user.batch.batchNumber }
+        : null;
+
+    const batchString =
+      batchDetails !== null
+        ? String(batchDetails.batchNumber)
+        : typeof user.batch === "string"
+          ? user.batch
+          : null;
+
     return {
       id: user.id,
       name: user.name,
       email: user.email,
       studentId: user.studentId,
-      batch: user.batch,
+      batchId: user.batchId ?? batchDetails?.id ?? null,
+      batch: batchString,
+      batchDetails,
       section: user.section,
       role: user.role,
       avatarUrl: user.avatarUrl,

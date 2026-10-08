@@ -38,7 +38,9 @@ export interface ResourceItem {
   fileUrl: string;
   fileSize: number;
   mimeType: string;
+  batchId?: string | null;
   batch: string | null;
+  batchDetails?: { id: string; batchNumber: number } | null;
   section: string | null;
   uploadedBy: string;
   isPublished: boolean;
@@ -61,6 +63,8 @@ export interface CourseItem {
 export interface ResourcesQueryParams {
   search?: string;
   courseId?: string;
+  departmentId?: string;
+  batchId?: string;
   resourceType?: ResourceType;
   type?: ResourceType;
   batch?: string;

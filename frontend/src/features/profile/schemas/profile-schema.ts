@@ -12,6 +12,7 @@ export const profileSchema = z.object({
     .max(50, "Student ID must not exceed 50 characters")
     .optional()
     .or(z.literal("")),
+  batchId: z.string().optional().or(z.literal("")),
   batch: z
     .string()
     .trim()

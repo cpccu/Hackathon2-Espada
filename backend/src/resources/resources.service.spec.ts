@@ -19,6 +19,10 @@ describe("ResourcesService", () => {
       findUnique: ReturnType<typeof vi.fn>;
       findMany: ReturnType<typeof vi.fn>;
     };
+    batch: {
+      findUnique: ReturnType<typeof vi.fn>;
+      findMany: ReturnType<typeof vi.fn>;
+    };
   };
 
   const adminUser: AuthenticatedUser = {
@@ -44,6 +48,7 @@ describe("ResourcesService", () => {
     code: "CSE 2115",
     name: "Data Structures",
     semester: 4,
+    departmentId: "dept-uuid-001",
     department: {
       id: "dept-uuid-001",
       code: "CSE",
@@ -61,7 +66,12 @@ describe("ResourcesService", () => {
     fileUrl: "https://campusos.dev/uploads/resources/linked-lists.pdf",
     fileSize: 1048576,
     mimeType: "application/pdf",
-    batch: "67",
+    batchId: "batch-uuid-001",
+    batch: {
+      id: "batch-uuid-001",
+      batchNumber: 67,
+      departmentId: "dept-uuid-001",
+    },
     section: "A",
     uploadedBy: "resource-admin-uuid-001",
     isPublished: true,
@@ -86,6 +96,10 @@ describe("ResourcesService", () => {
         update: vi.fn(),
       },
       course: {
+        findUnique: vi.fn(),
+        findMany: vi.fn(),
+      },
+      batch: {
         findUnique: vi.fn(),
         findMany: vi.fn(),
       },
@@ -134,7 +148,9 @@ describe("ResourcesService", () => {
           isPublished: true,
           courseId: "course-uuid-001",
           resourceType: ResourceType.NOTE,
-          batch: "67",
+          batch: {
+            batchNumber: 67,
+          },
           section: "A",
           OR: [
             { title: { contains: "lists", mode: "insensitive" } },
@@ -246,6 +262,12 @@ describe("ResourcesService", () => {
   describe("create", () => {
     it("should create a resource with uploadedBy set to authenticated user", async () => {
       prismaMock.course.findUnique.mockResolvedValue(mockCourse);
+      prismaMock.batch.findUnique.mockResolvedValue({
+        id: "batch-uuid-001",
+        batchNumber: 67,
+        departmentId: "dept-uuid-001",
+        isActive: true,
+      });
       prismaMock.resource.create.mockResolvedValue(mockResource);
 
       const dto = {
@@ -265,10 +287,12 @@ describe("ResourcesService", () => {
 
       expect(prismaMock.course.findUnique).toHaveBeenCalledWith({
         where: { id: "course-uuid-001" },
+        include: { department: true },
       });
       expect(prismaMock.resource.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           courseId: "course-uuid-001",
+          batchId: "batch-uuid-001",
           uploadedBy: "resource-admin-uuid-001",
           isPublished: true,
         }),

@@ -40,12 +40,20 @@ interface SemesterGroup {
   sections: SectionGroup[];
 }
 
+interface BatchGroup {
+  batchKey: string;
+  batchLabel: string;
+  batchNumber: number | null;
+  resourceCount: number;
+  semesters: SemesterGroup[];
+}
+
 interface DepartmentGroup {
   departmentId: string;
   departmentCode: string;
   departmentName: string;
   resourceCount: number;
-  semesters: SemesterGroup[];
+  batches: BatchGroup[];
 }
 
 export function ResourceHierarchyView({
@@ -57,13 +65,23 @@ export function ResourceHierarchyView({
   onRetry,
   onClearFilters,
 }: ResourceHierarchyViewProps) {
-  // Build the hierarchical tree: Department -> Semester -> Section -> Resources
+  // Build the hierarchical tree: Department -> Batch -> Semester -> Section -> Resources
   const departmentGroups = useMemo<DepartmentGroup[]>(() => {
-    const deptMap = new Map<string, {
-      code: string;
-      name: string;
-      semestersMap: Map<number, Map<string, ResourceItem[]>>;
-    }>();
+    const deptMap = new Map<
+      string,
+      {
+        code: string;
+        name: string;
+        batchesMap: Map<
+          string,
+          {
+            batchLabel: string;
+            batchNumber: number | null;
+            semestersMap: Map<number, Map<string, ResourceItem[]>>;
+          }
+        >;
+      }
+    >();
 
     for (const resource of resources) {
       const deptCode = resource.course.department?.code || "GENERAL";
@@ -75,18 +93,51 @@ export function ResourceHierarchyView({
         deptMap.set(deptKey, {
           code: deptCode,
           name: deptName,
-          semestersMap: new Map(),
+          batchesMap: new Map(),
         });
       }
 
       const deptEntry = deptMap.get(deptKey)!;
-      const semNum = resource.course.semester || 1;
 
-      if (!deptEntry.semestersMap.has(semNum)) {
-        deptEntry.semestersMap.set(semNum, new Map());
+      // Resolve batchKey, batchLabel, and batchNumber
+      let batchKey = "GENERAL";
+      let batchLabel = "General / All Batches";
+      let batchNumber: number | null = null;
+
+      if (resource.batchDetails?.batchNumber) {
+        batchNumber = resource.batchDetails.batchNumber;
+        batchKey = String(batchNumber);
+        batchLabel = `Batch ${batchNumber}`;
+      } else if (resource.batch) {
+        const parsed = parseInt(resource.batch.trim(), 10);
+        if (!isNaN(parsed)) {
+          batchNumber = parsed;
+          batchKey = String(parsed);
+          batchLabel = `Batch ${parsed}`;
+        } else {
+          batchKey = resource.batch.trim();
+          batchLabel = resource.batch.toLowerCase().startsWith("batch")
+            ? resource.batch
+            : `Batch ${resource.batch}`;
+        }
       }
 
-      const semEntry = deptEntry.semestersMap.get(semNum)!;
+      if (!deptEntry.batchesMap.has(batchKey)) {
+        deptEntry.batchesMap.set(batchKey, {
+          batchLabel,
+          batchNumber,
+          semestersMap: new Map(),
+        });
+      }
+
+      const batchEntry = deptEntry.batchesMap.get(batchKey)!;
+      const semNum = resource.course.semester || 1;
+
+      if (!batchEntry.semestersMap.has(semNum)) {
+        batchEntry.semestersMap.set(semNum, new Map());
+      }
+
+      const semEntry = batchEntry.semestersMap.get(semNum)!;
       const secKey = resource.section?.trim() || "";
 
       if (!semEntry.has(secKey)) {
@@ -100,46 +151,78 @@ export function ResourceHierarchyView({
 
     for (const [deptId, deptData] of deptMap.entries()) {
       let deptTotalCount = 0;
-      const semesterGroups: SemesterGroup[] = [];
+      const batchGroups: BatchGroup[] = [];
 
-      // Sort semesters numerically 1 -> 12
-      const sortedSemNumbers = Array.from(deptData.semestersMap.keys()).sort(
-        (a, b) => a - b,
+      // Sort batches: numeric batches ascending, non-numeric/general last
+      const sortedBatchKeys = Array.from(deptData.batchesMap.keys()).sort(
+        (a, b) => {
+          const entryA = deptData.batchesMap.get(a)!;
+          const entryB = deptData.batchesMap.get(b)!;
+          if (entryA.batchNumber !== null && entryB.batchNumber !== null) {
+            return entryA.batchNumber - entryB.batchNumber;
+          }
+          if (entryA.batchNumber !== null) return -1;
+          if (entryB.batchNumber !== null) return 1;
+          return a.localeCompare(b);
+        },
       );
 
-      for (const semNum of sortedSemNumbers) {
-        const secMap = deptData.semestersMap.get(semNum)!;
-        const sectionGroups: SectionGroup[] = [];
-        let semTotalCount = 0;
+      for (const bKey of sortedBatchKeys) {
+        const bData = deptData.batchesMap.get(bKey)!;
+        let batchTotalCount = 0;
+        const semesterGroups: SemesterGroup[] = [];
 
-        // Sort sections: "A", "B", ... then empty/null as "General / All Sections"
-        const sortedSecKeys = Array.from(secMap.keys()).sort((a, b) => {
-          if (!a) return 1;
-          if (!b) return -1;
-          return a.localeCompare(b);
-        });
+        // Sort semesters numerically 1 -> 12
+        const sortedSemNumbers = Array.from(bData.semestersMap.keys()).sort(
+          (a, b) => a - b,
+        );
 
-        for (const secKey of sortedSecKeys) {
-          const items = secMap.get(secKey)!;
-          const sectionLabel = secKey ? `Section ${secKey}` : "General / All Sections";
+        for (const semNum of sortedSemNumbers) {
+          const secMap = bData.semestersMap.get(semNum)!;
+          const sectionGroups: SectionGroup[] = [];
+          let semTotalCount = 0;
 
-          sectionGroups.push({
-            sectionKey: secKey || "GENERAL",
-            sectionLabel,
-            items,
+          // Sort sections: "A", "B", ... then empty/null as "General / All Sections"
+          const sortedSecKeys = Array.from(secMap.keys()).sort((a, b) => {
+            if (!a) return 1;
+            if (!b) return -1;
+            return a.localeCompare(b);
           });
 
-          semTotalCount += items.length;
+          for (const secKey of sortedSecKeys) {
+            const items = secMap.get(secKey)!;
+            const sectionLabel = secKey
+              ? `Section ${secKey}`
+              : "General / All Sections";
+
+            sectionGroups.push({
+              sectionKey: secKey || "GENERAL",
+              sectionLabel,
+              items,
+            });
+
+            semTotalCount += items.length;
+          }
+
+          semesterGroups.push({
+            semesterNumber: semNum,
+            semesterLabel: `Semester ${semNum}`,
+            resourceCount: semTotalCount,
+            sections: sectionGroups,
+          });
+
+          batchTotalCount += semTotalCount;
         }
 
-        semesterGroups.push({
-          semesterNumber: semNum,
-          semesterLabel: `Semester ${semNum}`,
-          resourceCount: semTotalCount,
-          sections: sectionGroups,
+        batchGroups.push({
+          batchKey: bKey,
+          batchLabel: bData.batchLabel,
+          batchNumber: bData.batchNumber,
+          resourceCount: batchTotalCount,
+          semesters: semesterGroups,
         });
 
-        deptTotalCount += semTotalCount;
+        deptTotalCount += batchTotalCount;
       }
 
       result.push({
@@ -147,7 +230,7 @@ export function ResourceHierarchyView({
         departmentCode: deptData.code,
         departmentName: deptData.name,
         resourceCount: deptTotalCount,
-        semesters: semesterGroups,
+        batches: batchGroups,
       });
     }
 
@@ -158,20 +241,33 @@ export function ResourceHierarchyView({
   }, [resources]);
 
   // Collapsible state:
-  // Departments: default first department expanded
-  // Semesters: default all semesters expanded
-  const [collapsedDepts, setCollapsedDepts] = useState<Record<string, boolean>>({});
-  const [collapsedSemesters, setCollapsedSemesters] = useState<Record<string, boolean>>({});
+  // All hierarchy accordions are collapsed by default on initial page load
+  const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>(
+    {},
+  );
+  const [expandedBatches, setExpandedBatches] = useState<
+    Record<string, boolean>
+  >({});
+  const [expandedSemesters, setExpandedSemesters] = useState<
+    Record<string, boolean>
+  >({});
 
   const toggleDept = (deptId: string) => {
-    setCollapsedDepts((prev) => ({
+    setExpandedDepts((prev) => ({
       ...prev,
       [deptId]: !prev[deptId],
     }));
   };
 
+  const toggleBatch = (batchKey: string) => {
+    setExpandedBatches((prev) => ({
+      ...prev,
+      [batchKey]: !prev[batchKey],
+    }));
+  };
+
   const toggleSemester = (semKey: string) => {
-    setCollapsedSemesters((prev) => ({
+    setExpandedSemesters((prev) => ({
       ...prev,
       [semKey]: !prev[semKey],
     }));
@@ -180,7 +276,8 @@ export function ResourceHierarchyView({
   // Result summary calculation
   const summaryText = useMemo(() => {
     if (resources.length === 0) return null;
-    const uniqueSemesters = new Set(resources.map((r) => r.course.semester)).size;
+    const uniqueSemesters = new Set(resources.map((r) => r.course.semester))
+      .size;
     const resourceWord = resources.length === 1 ? "resource" : "resources";
     const semesterWord = uniqueSemesters === 1 ? "semester" : "semesters";
     return `Showing ${resources.length} ${resourceWord} across ${uniqueSemesters} ${semesterWord}`;
@@ -189,20 +286,23 @@ export function ResourceHierarchyView({
   // 1. Loading State
   if (isLoading) {
     return (
-      <div
-        data-testid="resource-skeletons"
-        className="space-y-6"
-      >
+      <div data-testid="resource-skeletons" className="space-y-6">
         <div className="h-6 w-56 bg-muted rounded animate-pulse" />
         {Array.from({ length: 2 }).map((_, dIdx) => (
-          <div key={dIdx} className="rounded-xl border border-border p-5 space-y-4">
+          <div
+            key={dIdx}
+            className="rounded-xl border border-border p-5 space-y-4"
+          >
             <div className="flex justify-between items-center pb-3 border-b border-border/60">
               <div className="h-6 w-1/3 bg-muted rounded animate-pulse" />
               <div className="h-5 w-20 bg-muted rounded-full animate-pulse" />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {Array.from({ length: 3 }).map((_, cIdx) => (
-                <Card key={cIdx} className="animate-pulse flex flex-col h-56 border-border">
+                <Card
+                  key={cIdx}
+                  className="animate-pulse flex flex-col h-56 border-border"
+                >
                   <CardHeader className="space-y-2 pb-2">
                     <div className="h-5 w-20 bg-muted rounded" />
                     <div className="h-5 w-3/4 bg-muted rounded" />
@@ -254,7 +354,7 @@ export function ResourceHierarchyView({
     );
   }
 
-  // 4. Hierarchical Tree Content
+  // 4. Hierarchical Tree Content: Department -> Batch -> Semester -> Section -> Resources
   return (
     <div className="space-y-6">
       {/* Result Count & Structure Summary */}
@@ -268,12 +368,8 @@ export function ResourceHierarchyView({
 
       {/* Department Panels */}
       <div className="space-y-6">
-        {departmentGroups.map((dept, deptIndex) => {
-          // Default: first department is expanded, others expanded if fewer than 3 departments
-          const isDeptCollapsed =
-            collapsedDepts[dept.departmentId] !== undefined
-              ? collapsedDepts[dept.departmentId]
-              : deptIndex > 1;
+        {departmentGroups.map((dept) => {
+          const isDeptExpanded = Boolean(expandedDepts[dept.departmentId]);
 
           return (
             <div
@@ -286,7 +382,7 @@ export function ResourceHierarchyView({
                 type="button"
                 onClick={() => toggleDept(dept.departmentId)}
                 className="w-full flex items-center justify-between p-4 sm:p-5 text-left bg-muted/30 hover:bg-muted/50 border-b border-border/60 transition-colors cursor-pointer"
-                aria-expanded={!isDeptCollapsed}
+                aria-expanded={isDeptExpanded}
                 aria-label={`Toggle ${dept.departmentName}`}
               >
                 <div className="flex items-center gap-3 min-w-0 pr-2">
@@ -298,96 +394,153 @@ export function ResourceHierarchyView({
                       {dept.departmentName}
                     </h2>
                     <p className="text-xs text-muted-foreground">
-                      Faculty / Department Code: <span className="font-semibold text-foreground">{dept.departmentCode}</span>
+                      Faculty / Department Code:{" "}
+                      <span className="font-semibold text-foreground">
+                        {dept.departmentCode}
+                      </span>
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2.5 shrink-0">
-                  <Badge variant="secondary" className="text-xs font-semibold px-2.5 py-0.5">
-                    {dept.resourceCount} {dept.resourceCount === 1 ? "Resource" : "Resources"}
+                  <Badge
+                    variant="secondary"
+                    className="text-xs font-semibold px-2.5 py-0.5"
+                  >
+                    {dept.resourceCount}{" "}
+                    {dept.resourceCount === 1 ? "Resource" : "Resources"}
                   </Badge>
-                  {isDeptCollapsed ? (
-                    <ChevronRight className="size-4 text-muted-foreground" />
-                  ) : (
+                  {isDeptExpanded ? (
                     <ChevronDown className="size-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="size-4 text-muted-foreground" />
                   )}
                 </div>
               </button>
 
-              {/* Department Content: Semesters */}
-              {!isDeptCollapsed && (
-                <div className="p-4 sm:p-5 space-y-5">
-                  {dept.semesters.map((sem) => {
-                    const semKey = `${dept.departmentId}-${sem.semesterNumber}`;
-                    const isSemCollapsed = Boolean(collapsedSemesters[semKey]);
+              {/* Department Content: Batches */}
+              {isDeptExpanded && (
+                <div className="p-4 sm:p-5 space-y-4">
+                  {dept.batches.map((batch) => {
+                    const batchKey = `${dept.departmentId}-${batch.batchKey}`;
+                    const isBatchExpanded = Boolean(expandedBatches[batchKey]);
 
                     return (
                       <div
-                        key={semKey}
-                        data-testid={`semester-group-${sem.semesterNumber}`}
-                        className="rounded-lg border border-border/80 bg-background/50 overflow-hidden"
+                        key={batchKey}
+                        data-testid={`batch-group-${batch.batchKey}`}
+                        className="rounded-lg border border-border/80 bg-background/60 overflow-hidden"
                       >
-                        {/* Semester Header / Accordion Trigger */}
+                        {/* Batch Header / Accordion Trigger */}
                         <button
                           type="button"
-                          onClick={() => toggleSemester(semKey)}
-                          className="w-full flex items-center justify-between px-3.5 py-2.5 text-left bg-muted/20 hover:bg-muted/40 border-b border-border/40 transition-colors cursor-pointer"
-                          aria-expanded={!isSemCollapsed}
-                          aria-label={`Toggle ${sem.semesterLabel}`}
+                          onClick={() => toggleBatch(batchKey)}
+                          className="w-full flex items-center justify-between px-3.5 py-2.5 text-left bg-muted/25 hover:bg-muted/45 border-b border-border/40 transition-colors cursor-pointer"
+                          aria-expanded={isBatchExpanded}
+                          aria-label={`Toggle ${batch.batchLabel}`}
                         >
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
-                              {sem.semesterLabel}
+                            <span className="text-xs font-bold text-foreground bg-secondary px-2.5 py-0.5 rounded border border-border/50">
+                              {batch.batchLabel}
                             </span>
                             <span className="text-xs text-muted-foreground hidden sm:inline">
-                              (Curriculum Progression)
+                              (Academic Cohort)
                             </span>
                           </div>
 
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground font-medium">
-                              {sem.resourceCount} {sem.resourceCount === 1 ? "file" : "files"}
+                              {batch.resourceCount}{" "}
+                              {batch.resourceCount === 1 ? "file" : "files"}
                             </span>
-                            {isSemCollapsed ? (
-                              <ChevronRight className="size-3.5 text-muted-foreground" />
-                            ) : (
+                            {isBatchExpanded ? (
                               <ChevronDown className="size-3.5 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="size-3.5 text-muted-foreground" />
                             )}
                           </div>
                         </button>
 
-                        {/* Semester Content: Sections & Resource Cards */}
-                        {!isSemCollapsed && (
-                          <div className="p-3 sm:p-4 space-y-4">
-                            {sem.sections.map((sec) => (
-                              <div
-                                key={sec.sectionKey}
-                                data-testid={`section-group-${sec.sectionKey}`}
-                                className="space-y-3"
-                              >
-                                {/* Section Header */}
-                                <div className="flex items-center gap-2 pt-1 border-b border-border/30 pb-1.5">
-                                  <Layers className="size-3.5 text-muted-foreground" />
-                                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                    {sec.sectionLabel}
-                                  </h3>
-                                  <span className="text-[11px] text-muted-foreground/70 font-mono">
-                                    ({sec.items.length})
-                                  </span>
-                                </div>
+                        {/* Batch Content: Semesters */}
+                        {isBatchExpanded && (
+                          <div className="p-3 sm:p-4 space-y-3.5">
+                            {batch.semesters.map((sem) => {
+                              const semKey = `${batchKey}-${sem.semesterNumber}`;
+                              const isSemExpanded = Boolean(
+                                expandedSemesters[semKey],
+                              );
 
-                                {/* Resource Cards Grid */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                  {sec.items.map((resource) => (
-                                    <ResourceCard
-                                      key={resource.id}
-                                      resource={resource}
-                                    />
-                                  ))}
+                              return (
+                                <div
+                                  key={semKey}
+                                  data-testid={`semester-group-${sem.semesterNumber}`}
+                                  className="rounded-md border border-border/70 bg-card/70 overflow-hidden"
+                                >
+                                  {/* Semester Header / Accordion Trigger */}
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleSemester(semKey)}
+                                    className="w-full flex items-center justify-between px-3 py-2 text-left bg-muted/15 hover:bg-muted/30 border-b border-border/30 transition-colors cursor-pointer"
+                                    aria-expanded={isSemExpanded}
+                                    aria-label={`Toggle ${sem.semesterLabel}`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">
+                                        {sem.semesterLabel}
+                                      </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-muted-foreground font-medium">
+                                        {sem.resourceCount}{" "}
+                                        {sem.resourceCount === 1
+                                          ? "file"
+                                          : "files"}
+                                      </span>
+                                      {isSemExpanded ? (
+                                        <ChevronDown className="size-3 text-muted-foreground" />
+                                      ) : (
+                                        <ChevronRight className="size-3 text-muted-foreground" />
+                                      )}
+                                    </div>
+                                  </button>
+
+                                  {/* Semester Content: Sections & Resource Cards */}
+                                  {isSemExpanded && (
+                                    <div className="p-3 sm:p-4 space-y-4">
+                                      {sem.sections.map((sec) => (
+                                        <div
+                                          key={sec.sectionKey}
+                                          data-testid={`section-group-${sec.sectionKey}`}
+                                          className="space-y-3"
+                                        >
+                                          {/* Section Header */}
+                                          <div className="flex items-center gap-2 pt-1 border-b border-border/30 pb-1.5">
+                                            <Layers className="size-3.5 text-muted-foreground" />
+                                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                              {sec.sectionLabel}
+                                            </h3>
+                                            <span className="text-[11px] text-muted-foreground/70 font-mono">
+                                              ({sec.items.length})
+                                            </span>
+                                          </div>
+
+                                          {/* Resource Cards Grid */}
+                                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            {sec.items.map((resource) => (
+                                              <ResourceCard
+                                                key={resource.id}
+                                                resource={resource}
+                                              />
+                                            ))}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </div>

@@ -19,12 +19,29 @@ describe("ProfileForm", () => {
     },
   ];
 
+  const mockBatches = [
+    {
+      id: "batch-cse-67",
+      departmentId: "dept-ca000000-0000-4000-8000-000000000001",
+      batchNumber: 67,
+      isActive: true,
+    },
+    {
+      id: "batch-cse-68",
+      departmentId: "dept-ca000000-0000-4000-8000-000000000001",
+      batchNumber: 68,
+      isActive: true,
+    },
+  ];
+
   const mockUser: User = {
     id: "usr-00000000-0000-4000-8000-000000000001",
     name: "Rafid Hasan",
     email: "rafid.hasan@campusos.dev",
     studentId: "CSE-2023-142",
+    batchId: "batch-cse-67",
     batch: "67",
+    batchDetails: { id: "batch-cse-67", batchNumber: 67 },
     section: "A",
     role: "STUDENT",
     avatarUrl: null,
@@ -34,8 +51,10 @@ describe("ProfileForm", () => {
     updatedAt: "2026-01-15T00:00:00.000Z",
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.restoreAllMocks();
+    const batchesApi = await import("@/features/batches/api/batches-api");
+    vi.spyOn(batchesApi, "getBatches").mockResolvedValue(mockBatches);
   });
 
   it("renders form prefilled with user data and displays read-only fields", async () => {
@@ -53,13 +72,13 @@ describe("ProfileForm", () => {
     expect(screen.getByLabelText(/Email Address/i)).toHaveValue("rafid.hasan@campusos.dev");
     expect(screen.getByLabelText(/Email Address/i)).toBeDisabled();
     expect(screen.getByLabelText(/Student ID \/ Roll/i)).toHaveValue("CSE-2023-142");
-    expect(screen.getByLabelText(/Batch/i)).toHaveValue("67");
     expect(screen.getByLabelText(/Section/i)).toHaveValue("A");
 
     await waitFor(() => {
       expect(
         screen.getByText("Department of Computer Science & Engineering (CSE)"),
       ).toBeInTheDocument();
+      expect(screen.getByLabelText(/Batch/i)).toHaveValue("batch-cse-67");
     });
   });
 
@@ -115,6 +134,7 @@ describe("ProfileForm", () => {
     const updatedUser: User = {
       ...mockUser,
       name: "Rafid Updated",
+      batchId: "batch-cse-68",
       batch: "68",
     };
     const updateSpy = vi.spyOn(profileApi, "updateProfile").mockResolvedValue(updatedUser);
@@ -132,13 +152,14 @@ describe("ProfileForm", () => {
       expect(
         screen.getByText("Department of Computer Science & Engineering (CSE)"),
       ).toBeInTheDocument();
+      expect(screen.getByText("Batch 68")).toBeInTheDocument();
     });
 
     const nameInput = screen.getByLabelText(/Full Name \*/i);
     fireEvent.change(nameInput, { target: { value: "Rafid Updated" } });
 
-    const batchInput = screen.getByLabelText(/Batch/i);
-    fireEvent.change(batchInput, { target: { value: "68" } });
+    const batchSelect = screen.getByLabelText(/Batch/i);
+    fireEvent.change(batchSelect, { target: { value: "batch-cse-68" } });
 
     const submitBtn = screen.getByRole("button", { name: /Save Changes/i });
     fireEvent.click(submitBtn);
@@ -147,7 +168,7 @@ describe("ProfileForm", () => {
       expect(updateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "Rafid Updated",
-          batch: "68",
+          batchId: "batch-cse-68",
         }),
       );
       expect(onSuccess).toHaveBeenCalledWith(updatedUser);

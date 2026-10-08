@@ -31,7 +31,7 @@ describe("ProfileView", () => {
     expect(screen.getAllByText("Rafid Hasan").length).toBeGreaterThan(0);
     expect(screen.getAllByText("rafid.hasan@campusos.dev").length).toBeGreaterThan(0);
     expect(screen.getByText("CSE-2023-142")).toBeInTheDocument();
-    expect(screen.getByText("67")).toBeInTheDocument();
+    expect(screen.getByText("Batch 67")).toBeInTheDocument();
     expect(screen.getByText("A")).toBeInTheDocument();
     expect(screen.getAllByText("STUDENT").length).toBeGreaterThan(0);
     expect(screen.getByText("Active Account")).toBeInTheDocument();

@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/card";
 import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { Department } from "@/types";
+import type { Department, Batch } from "@/types";
+import { getBatches } from "@/features/batches/api/batches-api";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -33,12 +34,17 @@ export function RegisterForm() {
   const [isLoadingDepts, setIsLoadingDepts] = useState<boolean>(true);
   const [deptLoadError, setDeptLoadError] = useState<string | null>(null);
 
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [isLoadingBatches, setIsLoadingBatches] = useState<boolean>(false);
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -48,11 +54,14 @@ export function RegisterForm() {
       password: "",
       confirmPassword: "",
       studentId: "",
+      batchId: "",
       batch: "",
       section: "",
       departmentId: "",
     },
   });
+
+  const selectedDepartmentId = watch("departmentId");
 
   useEffect(() => {
     let isMounted = true;
@@ -83,6 +92,43 @@ export function RegisterForm() {
     };
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+    setValue("batchId", "");
+
+    if (!selectedDepartmentId) {
+      setBatches([]);
+      return;
+    }
+
+    async function fetchBatches() {
+      try {
+        setIsLoadingBatches(true);
+        const data = await getBatches({
+          departmentId: selectedDepartmentId,
+          isActive: true,
+        });
+        if (isMounted) {
+          setBatches(data);
+        }
+      } catch {
+        if (isMounted) {
+          setBatches([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingBatches(false);
+        }
+      }
+    }
+
+    fetchBatches();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedDepartmentId, setValue]);
+
   const onSubmit = async (data: RegisterFormData) => {
     setApiError(null);
     try {
@@ -91,7 +137,7 @@ export function RegisterForm() {
         email: data.email,
         password: data.password,
         studentId: data.studentId || undefined,
-        batch: data.batch || undefined,
+        batchId: data.batchId || undefined,
         section: data.section || undefined,
         departmentId: data.departmentId,
       };
@@ -217,12 +263,56 @@ export function RegisterForm() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input
-              label="Batch"
-              placeholder="67"
-              error={errors.batch?.message}
-              {...register("batch")}
-            />
+            {/* Batch Selection Dropdown */}
+            <div className="w-full space-y-1.5 text-left">
+              <label
+                htmlFor="batch"
+                className="block text-xs font-medium text-foreground tracking-tight"
+              >
+                Batch
+              </label>
+              <div className="relative">
+                <select
+                  id="batch"
+                  aria-label="Batch"
+                  disabled={!selectedDepartmentId || isLoadingBatches || isSubmitting}
+                  className={cn(
+                    "flex h-9 w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground shadow-xs transition-colors appearance-none cursor-pointer pr-9",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-ring",
+                    "disabled:cursor-not-allowed disabled:opacity-50",
+                    errors.batchId && "border-destructive focus-visible:ring-destructive",
+                  )}
+                  {...register("batchId")}
+                >
+                  <option value="">
+                    {!selectedDepartmentId
+                      ? "Select department first"
+                      : isLoadingBatches
+                        ? "Loading batches..."
+                        : batches.length === 0
+                          ? "No batches found"
+                          : "Select your batch"}
+                  </option>
+                  {batches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      Batch {b.batchNumber}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">
+                  {isLoadingBatches ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <ChevronDown className="size-4" />
+                  )}
+                </div>
+              </div>
+              {errors.batchId && (
+                <p role="alert" className="text-xs font-medium text-destructive mt-1 animate-in fade-in-50">
+                  {errors.batchId.message}
+                </p>
+              )}
+            </div>
 
             <Input
               label="Section"

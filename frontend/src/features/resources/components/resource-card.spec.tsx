@@ -91,4 +91,20 @@ describe("ResourceCard", () => {
 
     expect(screen.getByText("Unavailable")).toBeDisabled();
   });
+
+  it("resolves placeholder or example.invalid fileUrl to sample academic document", () => {
+    const placeholderResource: ResourceItem = {
+      ...mockResource,
+      fileUrl: "https://example.invalid/campusos/resources/dfs-bfs-graphs.pdf",
+    };
+
+    render(<ResourceCard resource={placeholderResource} />);
+
+    const openLink = screen.getByTitle("Download or open resource file in new tab");
+    expect(openLink).toHaveAttribute(
+      "href",
+      "/documents/sample-academic-resource.pdf",
+    );
+    expect(openLink).toHaveAttribute("target", "_blank");
+  });
 });

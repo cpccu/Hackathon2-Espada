@@ -64,3 +64,36 @@ export function getFileExtension(fileName: string): string {
   const ext = parts.pop();
   return ext ? ext.toUpperCase() : "FILE";
 }
+
+/**
+ * Default fallback reachable document path for demo resources.
+ * Stored in frontend/public/documents/ so it is statically served by Next.js in all environments.
+ */
+export const DEFAULT_SAMPLE_RESOURCE_URL =
+  "/documents/sample-academic-resource.pdf";
+
+/**
+ * Returns a reachable, safe URL for opening or downloading a resource file.
+ * If fileUrl points to a placeholder/invalid domain (e.g. example.invalid),
+ * it resolves to the local sample academic document.
+ */
+export function getSafeResourceFileUrl(
+  fileUrl: string | null | undefined,
+): string | null {
+  if (!fileUrl) {
+    return null;
+  }
+  const trimmed = fileUrl.trim();
+  if (!trimmed) {
+    return null;
+  }
+  if (
+    trimmed.includes("example.invalid") ||
+    trimmed.includes(".invalid") ||
+    trimmed.startsWith("http://example.com") ||
+    trimmed.startsWith("https://example.com")
+  ) {
+    return DEFAULT_SAMPLE_RESOURCE_URL;
+  }
+  return trimmed;
+}
