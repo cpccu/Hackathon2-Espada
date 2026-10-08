@@ -1,0 +1,33 @@
+# dependencies
+/node_modules
+
+# build output
+/dist
+/build
+*.tsbuildinfo
+
+# environment files — never commit these
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# tests
+/coverage
+
+# prisma generated client (generated into src/ so the build picks it up)
+/generated
+/prisma/generated
+/src/generated
+
+# editor / OS
+.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json
