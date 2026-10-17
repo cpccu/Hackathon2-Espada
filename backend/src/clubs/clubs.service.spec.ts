@@ -336,6 +336,7 @@ describe("ClubsService", () => {
       prismaMock.user.findUnique.mockResolvedValue({
         id: "target-user-uuid",
         role: UserRole.CLUB_ADMIN,
+        isActive: true,
       });
       prismaMock.clubAdminAssignment.findUnique.mockResolvedValue(null);
       prismaMock.clubAdminAssignment.create.mockResolvedValue({
@@ -361,11 +362,44 @@ describe("ClubsService", () => {
       expect(result.id).toBe("assignment-uuid-001");
     });
 
+    it("throws BadRequestException if candidate user is inactive", async () => {
+      prismaMock.club.findUnique.mockResolvedValue(mockClub);
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: "target-user-uuid",
+        role: UserRole.CLUB_ADMIN,
+        isActive: false,
+      });
+
+      await expect(
+        service.assignAdmin(
+          mockClub.id,
+          { userId: "target-user-uuid" },
+          adminUser,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("throws BadRequestException if target club is inactive", async () => {
+      prismaMock.club.findUnique.mockResolvedValue({
+        ...mockClub,
+        isActive: false,
+      });
+
+      await expect(
+        service.assignAdmin(
+          mockClub.id,
+          { userId: "target-user-uuid" },
+          adminUser,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it("throws BadRequestException if candidate user does not have CLUB_ADMIN role", async () => {
       prismaMock.club.findUnique.mockResolvedValue(mockClub);
       prismaMock.user.findUnique.mockResolvedValue({
         id: "student-candidate-uuid",
         role: UserRole.STUDENT,
+        isActive: true,
       });
 
       await expect(
@@ -382,6 +416,7 @@ describe("ClubsService", () => {
       prismaMock.user.findUnique.mockResolvedValue({
         id: "already-admin-uuid",
         role: UserRole.CLUB_ADMIN,
+        isActive: true,
       });
       prismaMock.clubAdminAssignment.findUnique.mockResolvedValue({
         userId: "already-admin-uuid",

@@ -49,9 +49,13 @@ describe("DashboardShell Role-Based Navigation", () => {
     expect(screen.getByText("Batch Management")).toBeInTheDocument();
     const link = screen.getByRole("link", { name: /Batch Management/i });
     expect(link).toHaveAttribute("href", "/dashboard/batches");
+
+    expect(screen.getByText("User Management")).toBeInTheDocument();
+    const userMgmtLink = screen.getByRole("link", { name: /User Management/i });
+    expect(userMgmtLink).toHaveAttribute("href", "/dashboard/admin/users");
   });
 
-  it("renders Batch Management link for RESOURCE_ADMIN users", () => {
+  it("renders Batch Management link but NOT User Management for RESOURCE_ADMIN users", () => {
     vi.spyOn(authHook, "useAuth").mockReturnValue({
       user: {
         id: "res-admin-1",
@@ -82,9 +86,10 @@ describe("DashboardShell Role-Based Navigation", () => {
     );
 
     expect(screen.getByText("Batch Management")).toBeInTheDocument();
+    expect(screen.queryByText("User Management")).not.toBeInTheDocument();
   });
 
-  it("does NOT render Batch Management link for STUDENT users", () => {
+  it("does NOT render Batch Management or User Management for STUDENT users", () => {
     vi.spyOn(authHook, "useAuth").mockReturnValue({
       user: {
         id: "student-1",
@@ -115,9 +120,10 @@ describe("DashboardShell Role-Based Navigation", () => {
     );
 
     expect(screen.queryByText("Batch Management")).not.toBeInTheDocument();
+    expect(screen.queryByText("User Management")).not.toBeInTheDocument();
   });
 
-  it("does NOT render Batch Management link for CLUB_ADMIN users", () => {
+  it("does NOT render Batch Management or User Management for CLUB_ADMIN users", () => {
     vi.spyOn(authHook, "useAuth").mockReturnValue({
       user: {
         id: "club-admin-1",
@@ -148,5 +154,7 @@ describe("DashboardShell Role-Based Navigation", () => {
     );
 
     expect(screen.queryByText("Batch Management")).not.toBeInTheDocument();
+    expect(screen.queryByText("User Management")).not.toBeInTheDocument();
   });
 });
+

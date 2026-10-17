@@ -350,6 +350,20 @@ export class ClubsService {
   }
 
   /**
+   * List clubs assigned to the currently authenticated user.
+   */
+  async getMyClubs(user: AuthenticatedUser) {
+    const assignments = await this.prisma.clubAdminAssignment.findMany({
+      where: { userId: user.id },
+      include: {
+        club: true,
+      },
+      orderBy: { assignedAt: "asc" },
+    });
+    return assignments.map((a) => a.club);
+  }
+
+  /**
    * ADMIN only: Assign a user as administrator of a club.
    */
   async assignAdmin(
@@ -365,12 +379,20 @@ export class ClubsService {
       throw new NotFoundException("Club not found");
     }
 
+    if (!club.isActive) {
+      throw new BadRequestException("Club is inactive");
+    }
+
     const candidateUser = await this.prisma.user.findUnique({
       where: { id: dto.userId },
     });
 
     if (!candidateUser) {
       throw new NotFoundException("User not found");
+    }
+
+    if (!candidateUser.isActive) {
+      throw new BadRequestException("User account is inactive");
     }
 
     if (candidateUser.role !== UserRole.CLUB_ADMIN) {
