@@ -56,6 +56,22 @@ export class ClubsController {
     return this.clubsService.findAll(query);
   }
 
+  @Get("my-assigned-clubs")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("bearer")
+  @ApiOperation({
+    summary: "List clubs assigned to the current user",
+    description:
+      "Returns active clubs that the authenticated user is assigned to manage.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "List of clubs assigned to the current user",
+  })
+  async getMyAssignedClubs(@CurrentUser() user: AuthenticatedUser) {
+    return this.clubsService.getMyClubs(user);
+  }
+
   @Get(":id")
   @ApiOperation({
     summary: "Get club details",

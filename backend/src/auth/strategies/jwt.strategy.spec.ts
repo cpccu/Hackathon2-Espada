@@ -37,4 +37,66 @@ describe("JwtStrategy", () => {
       strategy.validate({ sub: "", email: "", role: UserRole.STUDENT }),
     ).rejects.toThrow(UnauthorizedException);
   });
+
+  describe("when PrismaService is injected", () => {
+    const prismaMock = {
+      user: {
+        findUnique: vi.fn(),
+      },
+    };
+
+    beforeEach(() => {
+      strategy = new JwtStrategy(config, prismaMock as any);
+    });
+
+    it("returns user with current database role when user is active", async () => {
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: "usr-1",
+        email: "user@campusos.dev",
+        role: UserRole.ADMIN,
+        isActive: true,
+      });
+
+      const user = await strategy.validate({
+        sub: "usr-1",
+        email: "user@campusos.dev",
+        role: UserRole.STUDENT, // Stale role in JWT
+      });
+
+      expect(user).toEqual({
+        id: "usr-1",
+        email: "user@campusos.dev",
+        role: UserRole.ADMIN,
+      });
+    });
+
+    it("throws UnauthorizedException when user is deactivated in database", async () => {
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: "usr-1",
+        email: "user@campusos.dev",
+        role: UserRole.STUDENT,
+        isActive: false,
+      });
+
+      await expect(
+        strategy.validate({
+          sub: "usr-1",
+          email: "user@campusos.dev",
+          role: UserRole.STUDENT,
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("throws UnauthorizedException when user does not exist in database", async () => {
+      prismaMock.user.findUnique.mockResolvedValue(null);
+
+      await expect(
+        strategy.validate({
+          sub: "usr-non-existent",
+          email: "ghost@campusos.dev",
+          role: UserRole.STUDENT,
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+  });
 });

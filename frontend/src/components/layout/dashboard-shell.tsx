@@ -13,6 +13,7 @@ import {
   LogOut,
   Menu,
   User as UserIcon,
+  Users,
   X,
 } from "lucide-react";
 import { useAuth } from "@/features/auth";
@@ -58,6 +59,15 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           {
             label: "ADMINISTRATION",
             items: [
+              ...(user?.role === "ADMIN"
+                ? [
+                    {
+                      name: "User Management",
+                      href: "/dashboard/admin/users",
+                      icon: Users,
+                    },
+                  ]
+                : []),
               {
                 name: "Batch Management",
                 href: "/dashboard/batches",
